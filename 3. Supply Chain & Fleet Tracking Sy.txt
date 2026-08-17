@@ -1,0 +1,21 @@
+3. Supply Chain & Fleet Tracking System
+
+Focuses on state machines, complex queries, and logistical data relationships.
+V1 (Fleet & Roles): Roles (Dispatcher, Driver, Manager). Create Vehicles, Drivers,
+and Warehouses tables with foreign key relationships dictating which driver operates
+which vehicle.
+
+V2 (Shipment Lifecycle): Create Shipments and Routes. A shipment must move
+through strict states (Processing -> Dispatched -> In Transit -> Delivered).
+
+V3 (Multi-Stop Assignments): Implement many-to-many relationships where a Route
+contains multiple Shipments. Drivers can log in and view their ordered stop-list for
+the day
+
+V4 (Proof of Delivery): Add media uploads. Drivers must upload a photo of the
+delivered package and a digital signature before the system allows the shipment
+state to change to "Delivered."
+
+V5 (Bulk Route Processing): Dispatchers can upload a daily CSV manifest of orders.
+The backend parses the CSV, automatically creates shipments, and flags
+unassigned routes.

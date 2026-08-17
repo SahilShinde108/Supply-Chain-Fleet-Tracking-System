@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+
+{% block title %}Delete Confirmation{% endblock %}
+
+{% block header_title %}Delete Confirmation{% endblock %}
+
+{% block content %}
+<div class="max-w-md mx-auto min-h-[60vh] flex items-center justify-center">
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-xl p-6 text-center w-full">
+        <div class="w-14 h-14 bg-rose-50 text-rose-500 rounded-full mx-auto flex items-center justify-center text-2xl mb-4">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+        </div>
+
+        <h3 class="text-lg font-bold text-slate-900">Are you sure?</h3>
+        <p class="text-sm text-slate-500 mt-2">
+            You are about to delete the {{ type }}: <span class="font-semibold text-slate-800 font-mono bg-slate-100 px-2 py-0.5 rounded">{{ object }}</span>. This action cannot be undone.
+        </p>
+
+        <form method="post" class="mt-6 flex items-center justify-center space-x-3">
+            {% csrf_token %}
+            <a href="/?tab={{ active_tab|default:'warehouses' }}" class="w-1/2 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium rounded-lg transition">
+                Cancel
+            </a>
+            <button type="submit" class="w-1/2 py-2.5 bg-rose-600 hover:bg-rose-700 text-white text-sm font-medium rounded-lg shadow-sm shadow-rose-600/30 transition">
+                Yes, Delete
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}
