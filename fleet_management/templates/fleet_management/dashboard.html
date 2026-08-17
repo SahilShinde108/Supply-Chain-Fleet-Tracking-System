@@ -11,6 +11,41 @@
 {% block content %}
 <div class="space-y-6">
 
+    {% if driver_profile %}
+    <!-- Driver Info Banner for registered Drivers -->
+    <div class="bg-gradient-to-r from-indigo-900 via-slate-900 to-indigo-950 rounded-2xl p-6 text-white shadow-lg border border-indigo-500/20">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div class="flex items-center space-x-4">
+                <div class="w-14 h-14 rounded-2xl bg-indigo-600/30 border border-indigo-400/30 flex items-center justify-center text-2xl text-indigo-300">
+                    <i class="fa-solid fa-id-card"></i>
+                </div>
+                <div>
+                    <div class="flex items-center space-x-2">
+                        <span class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 uppercase tracking-wider">
+                            Active Driver
+                        </span>
+                    </div>
+                    <h2 class="text-xl font-bold mt-1">Welcome back, {{ driver_profile.name }}</h2>
+                    <p class="text-xs text-slate-400 mt-0.5">Phone: {{ driver_profile.phone }}</p>
+                </div>
+            </div>
+            <div class="bg-slate-800/80 backdrop-blur rounded-xl p-4 border border-slate-700/80 flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center text-lg">
+                    <i class="fa-solid fa-truck"></i>
+                </div>
+                <div>
+                    <p class="text-[10px] uppercase font-semibold text-slate-400 tracking-wider">Assigned Vehicle</p>
+                    {% if driver_profile.vehicle %}
+                    <p class="text-sm font-bold font-mono text-amber-300">{{ driver_profile.vehicle.license_plate }} ({{ driver_profile.vehicle.get_vehicle_type_display }})</p>
+                    {% else %}
+                    <p class="text-xs text-slate-400 italic">No vehicle assigned yet</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- Stat Summary Cards -->
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-5">
         <a href="/?tab=warehouses" class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition flex items-center justify-between group {% if active_tab == 'warehouses' or not active_tab %}ring-2 ring-indigo-500/20 border-indigo-200{% endif %}">
@@ -53,10 +88,13 @@
                 <h2 class="text-base font-bold text-slate-800">Warehouses Directory</h2>
                 <p class="text-xs text-slate-500 mt-0.5">Manage distribution hubs and geolocation points</p>
             </div>
+            {% if can_manage %}
             <a href="{% url 'add_warehouse' %}" class="inline-flex items-center justify-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg shadow-sm shadow-indigo-600/20 transition">
                 <i class="fa-solid fa-plus mr-2 text-xs"></i> Add Warehouse
             </a>
+            {% endif %}
         </div>
+
 
         <div class="overflow-x-auto">
             <table class="w-full text-left border-collapse">
@@ -113,9 +151,11 @@
                 <h2 class="text-base font-bold text-slate-800">Fleet Vehicles</h2>
                 <p class="text-xs text-slate-500 mt-0.5">Manage transport vehicles, capacity limits, and types</p>
             </div>
+            {% if can_manage %}
             <a href="{% url 'add_vehicle' %}" class="inline-flex items-center justify-center px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg shadow-sm shadow-emerald-600/20 transition">
                 <i class="fa-solid fa-plus mr-2 text-xs"></i> Add Vehicle
             </a>
+            {% endif %}
         </div>
 
         <div class="overflow-x-auto">
@@ -125,7 +165,9 @@
                         <th class="px-6 py-3.5">License Plate</th>
                         <th class="px-6 py-3.5">Vehicle Type</th>
                         <th class="px-6 py-3.5">Cargo Capacity</th>
+                        {% if can_manage %}
                         <th class="px-6 py-3.5 text-right">Actions</th>
+                        {% endif %}
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100 text-sm text-slate-700">
@@ -154,6 +196,7 @@
                         <td class="px-6 py-4 font-medium text-slate-700">
                             {{ vehicle.capacity }} <span class="text-xs text-slate-400 font-normal">kg</span>
                         </td>
+                        {% if can_manage %}
                         <td class="px-6 py-4 text-right space-x-2">
                             <a href="{% url 'edit_vehicle' vehicle.pk %}" class="inline-flex items-center px-2.5 py-1.5 bg-slate-100 hover:bg-indigo-50 text-slate-600 hover:text-indigo-600 text-xs font-medium rounded transition">
                                 <i class="fa-solid fa-pen-to-square mr-1"></i> Edit
@@ -162,12 +205,13 @@
                                 <i class="fa-solid fa-trash mr-1"></i> Delete
                             </a>
                         </td>
+                        {% endif %}
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="4" class="px-6 py-12 text-center text-slate-400">
+                        <td colspan="{% if can_manage %}4{% else %}3{% endif %}" class="px-6 py-12 text-center text-slate-400">
                             <i class="fa-solid fa-truck text-3xl mb-2 text-slate-300 block"></i>
-                            No vehicles added yet. Click "Add Vehicle" to register one.
+                            No vehicles added yet.{% if can_manage %} Click "Add Vehicle" to register one.{% endif %}
                         </td>
                     </tr>
                     {% endfor %}
@@ -184,9 +228,11 @@
                 <h2 class="text-base font-bold text-slate-800">Drivers Directory</h2>
                 <p class="text-xs text-slate-500 mt-0.5">Register drivers and manage vehicle assignments</p>
             </div>
+            {% if can_manage %}
             <a href="{% url 'add_driver' %}" class="inline-flex items-center justify-center px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium rounded-lg shadow-sm shadow-amber-600/20 transition">
                 <i class="fa-solid fa-plus mr-2 text-xs"></i> Register Driver
             </a>
+            {% endif %}
         </div>
 
         <div class="overflow-x-auto">
@@ -196,7 +242,9 @@
                         <th class="px-6 py-3.5">Driver Name</th>
                         <th class="px-6 py-3.5">Phone Number</th>
                         <th class="px-6 py-3.5">Assigned Vehicle</th>
+                        {% if can_manage %}
                         <th class="px-6 py-3.5 text-right">Actions</th>
+                        {% endif %}
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100 text-sm text-slate-700">
@@ -222,6 +270,7 @@
                                 </span>
                             {% endif %}
                         </td>
+                        {% if can_manage %}
                         <td class="px-6 py-4 text-right space-x-2">
                             <a href="{% url 'edit_driver' driver.pk %}" class="inline-flex items-center px-2.5 py-1.5 bg-slate-100 hover:bg-indigo-50 text-slate-600 hover:text-indigo-600 text-xs font-medium rounded transition">
                                 <i class="fa-solid fa-pen-to-square mr-1"></i> Edit
@@ -230,12 +279,13 @@
                                 <i class="fa-solid fa-trash mr-1"></i> Delete
                             </a>
                         </td>
+                        {% endif %}
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="4" class="px-6 py-12 text-center text-slate-400">
+                        <td colspan="{% if can_manage %}4{% else %}3{% endif %}" class="px-6 py-12 text-center text-slate-400">
                             <i class="fa-solid fa-id-card text-3xl mb-2 text-slate-300 block"></i>
-                            No drivers registered yet. Click "Register Driver" to add one.
+                            No drivers registered yet.{% if can_manage %} Click "Register Driver" to add one.{% endif %}
                         </td>
                     </tr>
                     {% endfor %}
@@ -244,6 +294,7 @@
         </div>
     </div>
     {% endif %}
+
 
 </div>
 {% endblock %}

@@ -1,0 +1,213 @@
+{% extends 'base.html' %}
+
+{% block title %}Create an Account - LogiTrack{% endblock %}
+
+{% block content %}
+<div class="min-h-[85vh] flex items-center justify-center py-6">
+    <div class="w-full max-w-lg bg-white p-8 sm:p-10 rounded-2xl shadow-xl border border-slate-200">
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <div class="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-xl mx-auto flex items-center justify-center text-2xl mb-3 shadow-inner">
+                <i class="fa-solid fa-user-plus"></i>
+            </div>
+            <h2 class="text-2xl font-bold text-slate-800">Create LogiTrack Account</h2>
+            <p class="text-xs text-slate-500 mt-1">Register for fleet coordination and tracking access</p>
+        </div>
+
+        <!-- Global Errors -->
+        {% if form.non_field_errors %}
+        <div class="bg-rose-50 border border-rose-200 text-rose-700 px-4 py-3 rounded-lg text-sm mb-6 space-y-1">
+            {% for error in form.non_field_errors %}
+            <div class="flex items-center">
+                <i class="fa-solid fa-circle-exclamation text-rose-500 mr-2 text-base"></i>
+                <span>{{ error }}</span>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <form method="post" action="{% url 'signup' %}" class="space-y-4">
+            {% csrf_token %}
+
+            <!-- Username -->
+            <div>
+                <label for="id_username" class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Username <span class="text-rose-500">*</span>
+                </label>
+                <div class="relative">
+                    <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400">
+                        <i class="fa-solid fa-at text-sm"></i>
+                    </span>
+                    <input type="text" name="username" id="id_username" value="{{ form.username.value|default:'' }}"
+                        class="w-full pl-10 pr-4 py-2.5 rounded-lg border {% if form.username.errors %}border-rose-400 focus:ring-rose-400{% else %}border-slate-300 focus:ring-indigo-500{% endif %} focus:ring-2 focus:border-transparent transition text-slate-800 text-sm"
+                        placeholder="e.g. alex_dispatch" required autofocus>
+                </div>
+                {% if form.username.errors %}
+                <p class="text-rose-600 text-xs mt-1">{{ form.username.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <!-- First & Last Name -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                    <label for="id_first_name" class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">First Name</label>
+                    <input type="text" name="first_name" id="id_first_name" value="{{ form.first_name.value|default:'' }}"
+                        class="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition text-slate-800 text-sm"
+                        placeholder="e.g. Alex">
+                    {% if form.first_name.errors %}
+                    <p class="text-rose-600 text-xs mt-1">{{ form.first_name.errors.0 }}</p>
+                    {% endif %}
+                </div>
+                <div>
+                    <label for="id_last_name" class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">Last Name</label>
+                    <input type="text" name="last_name" id="id_last_name" value="{{ form.last_name.value|default:'' }}"
+                        class="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition text-slate-800 text-sm"
+                        placeholder="e.g. Morgan">
+                    {% if form.last_name.errors %}
+                    <p class="text-rose-600 text-xs mt-1">{{ form.last_name.errors.0 }}</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Email -->
+            <div>
+                <label for="id_email" class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Email Address <span class="text-rose-500">*</span>
+                </label>
+                <div class="relative">
+                    <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400">
+                        <i class="fa-solid fa-envelope text-sm"></i>
+                    </span>
+                    <input type="email" name="email" id="id_email" value="{{ form.email.value|default:'' }}"
+                        class="w-full pl-10 pr-4 py-2.5 rounded-lg border {% if form.email.errors %}border-rose-400 focus:ring-rose-400{% else %}border-slate-300 focus:ring-indigo-500{% endif %} focus:ring-2 focus:border-transparent transition text-slate-800 text-sm"
+                        placeholder="name@company.com" required>
+                </div>
+                {% if form.email.errors %}
+                <p class="text-rose-600 text-xs mt-1">{{ form.email.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <!-- Role Selection -->
+            <div>
+                <label for="id_role" class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                    System Role <span class="text-rose-500">*</span>
+                </label>
+                <div class="relative">
+                    <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400">
+                        <i class="fa-solid fa-id-badge text-sm"></i>
+                    </span>
+                    <select name="role" id="id_role"
+                        class="w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition text-slate-800 text-sm bg-white">
+                        <option value="DISPATCHER" {% if form.role.value == 'DISPATCHER' or not form.role.value %}selected{% endif %}>
+                            Dispatcher - Route & Fleet Coordinator
+                        </option>
+                        <option value="DRIVER" {% if form.role.value == 'DRIVER' %}selected{% endif %}>
+                            Driver - Fleet & Transport Operator
+                        </option>
+                        <option value="MANAGER" {% if form.role.value == 'MANAGER' %}selected{% endif %}>
+                            Manager - Logistics Operations Supervisor
+                        </option>
+                    </select>
+                </div>
+                {% if form.role.errors %}
+                <p class="text-rose-600 text-xs mt-1">{{ form.role.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <!-- Phone (for Drivers) -->
+            <div id="phone-field-wrapper">
+                <label for="id_phone" class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Phone Number <span id="phone-required-badge" class="text-slate-400 text-[10px] font-normal normal-case">(Required for Drivers)</span>
+                </label>
+                <div class="relative">
+                    <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400">
+                        <i class="fa-solid fa-phone text-sm"></i>
+                    </span>
+                    <input type="text" name="phone" id="id_phone" value="{{ form.phone.value|default:'' }}"
+                        class="w-full pl-10 pr-4 py-2.5 rounded-lg border {% if form.phone.errors %}border-rose-400 focus:ring-rose-400{% else %}border-slate-300 focus:ring-indigo-500{% endif %} focus:ring-2 focus:border-transparent transition text-slate-800 text-sm"
+                        placeholder="+1 (555) 000-0000">
+                </div>
+                {% if form.phone.errors %}
+                <p class="text-rose-600 text-xs mt-1">{{ form.phone.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <!-- Passwords -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                    <label for="id_password" class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                        Password <span class="text-rose-500">*</span>
+                    </label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400">
+                            <i class="fa-solid fa-lock text-sm"></i>
+                        </span>
+                        <input type="password" name="password" id="id_password"
+                            class="w-full pl-10 pr-4 py-2.5 rounded-lg border {% if form.password.errors %}border-rose-400 focus:ring-rose-400{% else %}border-slate-300 focus:ring-indigo-500{% endif %} focus:ring-2 focus:border-transparent transition text-slate-800 text-sm"
+                            placeholder="Min 6 characters" required>
+                    </div>
+                    {% if form.password.errors %}
+                    <p class="text-rose-600 text-xs mt-1">{{ form.password.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <div>
+                    <label for="id_confirm_password" class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                        Confirm <span class="text-rose-500">*</span>
+                    </label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400">
+                            <i class="fa-solid fa-shield-halved text-sm"></i>
+                        </span>
+                        <input type="password" name="confirm_password" id="id_confirm_password"
+                            class="w-full pl-10 pr-4 py-2.5 rounded-lg border {% if form.confirm_password.errors %}border-rose-400 focus:ring-rose-400{% else %}border-slate-300 focus:ring-indigo-500{% endif %} focus:ring-2 focus:border-transparent transition text-slate-800 text-sm"
+                            placeholder="Repeat password" required>
+                    </div>
+                    {% if form.confirm_password.errors %}
+                    <p class="text-rose-600 text-xs mt-1">{{ form.confirm_password.errors.0 }}</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Submit Button -->
+            <div class="pt-2">
+                <button type="submit" class="w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg shadow-lg shadow-indigo-600/30 transition duration-150 text-sm flex items-center justify-center">
+                    <span>Complete Registration</span>
+                    <i class="fa-solid fa-arrow-right ml-2 text-xs"></i>
+                </button>
+            </div>
+        </form>
+
+        <!-- Footer link to Login -->
+        <div class="mt-6 pt-5 border-t border-slate-100 text-center">
+            <p class="text-xs text-slate-500">
+                Already registered with LogiTrack?
+                <a href="{% url 'login' %}" class="font-semibold text-indigo-600 hover:text-indigo-700 hover:underline ml-1">
+                    Sign In
+                </a>
+            </p>
+        </div>
+    </div>
+</div>
+
+<script>
+    const roleSelect = document.getElementById('id_role');
+    const phoneBadge = document.getElementById('phone-required-badge');
+    const phoneInput = document.getElementById('id_phone');
+
+    function updateRoleContext() {
+        if (roleSelect.value === 'DRIVER') {
+            phoneBadge.className = 'text-rose-500 text-[10px] font-semibold';
+            phoneBadge.textContent = '(Required for Driver profile)';
+            phoneInput.setAttribute('required', 'required');
+        } else {
+            phoneBadge.className = 'text-slate-400 text-[10px] font-normal normal-case';
+            phoneBadge.textContent = '(Optional)';
+            phoneInput.removeAttribute('required');
+        }
+    }
+
+    roleSelect.addEventListener('change', updateRoleContext);
+    updateRoleContext();
+</script>
+{% endblock %}

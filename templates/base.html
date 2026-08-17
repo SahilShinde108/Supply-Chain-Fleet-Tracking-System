@@ -74,7 +74,10 @@
                     <div class="truncate">
                         <p class="text-xs font-semibold text-white truncate">{{ user.username }}</p>
                         <p class="text-[10px] text-emerald-400 font-medium flex items-center">
-                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block mr-1"></span> Dispatcher
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block mr-1"></span>
+                            {% if user.is_superuser %}Administrator
+                            {% elif user.groups.first %}{{ user.groups.first.name|title }}
+                            {% else %}Staff{% endif %}
                         </p>
                     </div>
                 </div>
@@ -84,6 +87,18 @@
             </div>
         </div>
     </aside>
+    {% else %}
+    <!-- Public Navbar for Unauthenticated visitors -->
+    <header class="w-full bg-slate-900 border-b border-slate-800 px-6 py-3.5 flex items-center justify-between shadow-md md:hidden">
+        <div class="flex items-center space-x-2.5">
+            <i class="fa-solid fa-truck-fast text-indigo-400 text-xl"></i>
+            <span class="font-bold text-base tracking-wide text-white">LogiTrack</span>
+        </div>
+        <div class="flex items-center space-x-3 text-xs">
+            <a href="{% url 'login' %}" class="text-slate-300 hover:text-white font-medium">Sign In</a>
+            <a href="{% url 'signup' %}" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-3 py-1.5 rounded-lg transition">Sign Up</a>
+        </div>
+    </header>
     {% endif %}
 
     <!-- Main Workspace -->
@@ -106,9 +121,29 @@
 
         <!-- Page Main Content -->
         <main class="flex-1 p-6 md:p-8 overflow-y-auto">
+            {% if messages %}
+            <div class="max-w-7xl mx-auto mb-6 space-y-2">
+                {% for message in messages %}
+                <div class="px-4 py-3 rounded-xl text-sm flex items-center justify-between shadow-sm {% if message.tags == 'error' %}bg-rose-50 border border-rose-200 text-rose-800{% elif message.tags == 'success' %}bg-emerald-50 border border-emerald-200 text-emerald-800{% else %}bg-indigo-50 border border-indigo-200 text-indigo-800{% endif %}">
+                    <div class="flex items-center space-x-2.5">
+                        {% if message.tags == 'error' %}
+                        <i class="fa-solid fa-circle-exclamation text-rose-500"></i>
+                        {% elif message.tags == 'success' %}
+                        <i class="fa-solid fa-circle-check text-emerald-500"></i>
+                        {% else %}
+                        <i class="fa-solid fa-circle-info text-indigo-500"></i>
+                        {% endif %}
+                        <span class="font-medium">{{ message }}</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
             {% block content %}{% endblock %}
         </main>
     </div>
+
 
 </body>
 </html>

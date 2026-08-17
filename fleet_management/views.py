@@ -1,9 +1,10 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.views import LoginView
-from django.contrib.auth import logout
+from django.contrib.auth import logout, login
+from django.contrib import messages
 from .models import Warehouse, Vehicle, Driver
-from .forms import WarehouseForm, VehicleForm, DriverForm
+from .forms import WarehouseForm, VehicleForm, DriverForm, SignUpForm
 
 # Check user role (Dispatcher, Manager, or Superuser)
 def is_dispatcher_or_manager(user):
@@ -15,17 +16,41 @@ class CustomLoginView(LoginView):
     template_name = 'fleet_management/login.html'
     redirect_authenticated_user = True
 
+def signup_view(request):
+    if request.user.is_authenticated:
+        return redirect('dashboard')
+
+    if request.method == 'POST':
+        form = SignUpForm(request.POST)
+        if form.is_valid():
+            user = form.save()
+            login(request, user)
+            role = form.cleaned_data.get('role', '').title()
+            messages.success(request, f"Welcome to LogiTrack, {user.username}! Your {role} account has been registered.")
+            return redirect('dashboard')
+    else:
+        form = SignUpForm()
+
+    return render(request, 'fleet_management/signup.html', {'form': form})
+
 def logout_view(request):
     logout(request)
+    messages.info(request, "You have been logged out.")
     return redirect('login')
 
 @login_required
-@user_passes_test(is_dispatcher_or_manager)
 def dashboard(request):
     tab = request.GET.get('tab', 'warehouses')
     warehouses = Warehouse.objects.all()
     vehicles = Vehicle.objects.all()
     drivers = Driver.objects.all()
+
+    driver_profile = None
+    if hasattr(request.user, 'driver'):
+        driver_profile = request.user.driver
+
+    can_manage = is_dispatcher_or_manager(request.user)
+
     context = {
         'active_tab': tab,
         'warehouses': warehouses,
@@ -34,8 +59,11 @@ def dashboard(request):
         'warehouse_count': warehouses.count(),
         'vehicle_count': vehicles.count(),
         'driver_count': drivers.count(),
+        'driver_profile': driver_profile,
+        'can_manage': can_manage,
     }
     return render(request, 'fleet_management/dashboard.html', context)
+
 
 # --- Warehouse CRUD ---
 @login_required

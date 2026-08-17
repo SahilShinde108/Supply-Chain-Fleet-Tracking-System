@@ -3,8 +3,10 @@ from . import views
 
 urlpatterns = [
     path('login/', views.CustomLoginView.as_view(), name='login'),
+    path('signup/', views.signup_view, name='signup'),
     path('logout/', views.logout_view, name='logout'),
     path('', views.dashboard, name='dashboard'),
+
     
     # Warehouse URLs
     path('add-warehouse/', views.add_warehouse, name='add_warehouse'),
