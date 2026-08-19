@@ -1,11 +1,19 @@
 {% extends 'base.html' %}
 
 {% block title %}
-    {% if active_tab == 'vehicles' %}Vehicles Overview{% elif active_tab == 'drivers' %}Drivers Directory{% else %}Warehouses Hub{% endif %} - Fleet Management
+    {% if active_tab == 'shipments' or not active_tab %}Shipments Lifecycle & Tracking
+    {% elif active_tab == 'routes' %}Routes & Manifests
+    {% elif active_tab == 'vehicles' %}Vehicles Overview
+    {% elif active_tab == 'drivers' %}Drivers Directory
+    {% else %}Warehouses Hub{% endif %} - LogiTrack
 {% endblock %}
 
 {% block header_title %}
-    {% if active_tab == 'vehicles' %}Vehicles Management{% elif active_tab == 'drivers' %}Drivers Directory{% else %}Warehouses Hub{% endif %}
+    {% if active_tab == 'shipments' or not active_tab %}Shipment Operations & Lifecycle Tracking
+    {% elif active_tab == 'routes' %}Routes & Dispatch Manifests
+    {% elif active_tab == 'vehicles' %}Vehicles Management
+    {% elif active_tab == 'drivers' %}Drivers Directory
+    {% else %}Warehouses Hub{% endif %}
 {% endblock %}
 
 {% block content %}
@@ -24,6 +32,11 @@
                         <span class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 uppercase tracking-wider">
                             Active Driver
                         </span>
+                        {% if driver_assigned_routes %}
+                        <span class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                            {{ driver_assigned_routes.count }} Assigned Route(s)
+                        </span>
+                        {% endif %}
                     </div>
                     <h2 class="text-xl font-bold mt-1">Welcome back, {{ driver_profile.name }}</h2>
                     <p class="text-xs text-slate-400 mt-0.5">Phone: {{ driver_profile.phone }}</p>
@@ -47,63 +60,374 @@
     {% endif %}
 
     <!-- Stat Summary Cards -->
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-5">
-        <a href="/?tab=warehouses" class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition flex items-center justify-between group {% if active_tab == 'warehouses' or not active_tab %}ring-2 ring-indigo-500/20 border-indigo-200{% endif %}">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        <!-- Shipments Card -->
+        <a href="/?tab=shipments" class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition flex items-center justify-between group {% if active_tab == 'shipments' or not active_tab %}ring-2 ring-indigo-500/20 border-indigo-200{% endif %}">
             <div>
-                <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Warehouses</p>
-                <p class="text-2xl font-bold text-slate-800 mt-1">{{ warehouse_count }}</p>
+                <p class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Total Shipments</p>
+                <p class="text-xl font-bold text-slate-800 mt-0.5">{{ shipment_count }}</p>
+                <div class="flex items-center space-x-1.5 mt-1">
+                    <span class="text-[10px] text-amber-600 font-medium">{{ processing_count }} Proc</span>
+                    <span class="text-slate-300">•</span>
+                    <span class="text-[10px] text-purple-600 font-medium">{{ in_transit_count }} Transit</span>
+                </div>
             </div>
-            <div class="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-xl group-hover:scale-110 transition">
+            <div class="w-11 h-11 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-lg group-hover:scale-110 transition">
+                <i class="fa-solid fa-boxes-packing"></i>
+            </div>
+        </a>
+
+        <!-- Routes Card -->
+        <a href="/?tab=routes" class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition flex items-center justify-between group {% if active_tab == 'routes' %}ring-2 ring-indigo-500/20 border-indigo-200{% endif %}">
+            <div>
+                <p class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Delivery Routes</p>
+                <p class="text-xl font-bold text-slate-800 mt-0.5">{{ route_count }}</p>
+                <p class="text-[10px] text-emerald-600 font-medium mt-1">{{ delivered_count }} Completed Drops</p>
+            </div>
+            <div class="w-11 h-11 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-lg group-hover:scale-110 transition">
+                <i class="fa-solid fa-route"></i>
+            </div>
+        </a>
+
+        <!-- Warehouses Card -->
+        <a href="/?tab=warehouses" class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition flex items-center justify-between group {% if active_tab == 'warehouses' %}ring-2 ring-indigo-500/20 border-indigo-200{% endif %}">
+            <div>
+                <p class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Warehouses</p>
+                <p class="text-xl font-bold text-slate-800 mt-0.5">{{ warehouse_count }}</p>
+                <p class="text-[10px] text-slate-400 font-medium mt-1">Active Hubs</p>
+            </div>
+            <div class="w-11 h-11 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center text-lg group-hover:scale-110 transition">
                 <i class="fa-solid fa-warehouse"></i>
             </div>
         </a>
 
-        <a href="/?tab=vehicles" class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition flex items-center justify-between group {% if active_tab == 'vehicles' %}ring-2 ring-indigo-500/20 border-indigo-200{% endif %}">
+        <!-- Vehicles Card -->
+        <a href="/?tab=vehicles" class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition flex items-center justify-between group {% if active_tab == 'vehicles' %}ring-2 ring-indigo-500/20 border-indigo-200{% endif %}">
             <div>
-                <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Fleet Vehicles</p>
-                <p class="text-2xl font-bold text-slate-800 mt-1">{{ vehicle_count }}</p>
+                <p class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Fleet Vehicles</p>
+                <p class="text-xl font-bold text-slate-800 mt-0.5">{{ vehicle_count }}</p>
+                <p class="text-[10px] text-slate-400 font-medium mt-1">Transports</p>
             </div>
-            <div class="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl group-hover:scale-110 transition">
+            <div class="w-11 h-11 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-lg group-hover:scale-110 transition">
                 <i class="fa-solid fa-truck"></i>
             </div>
         </a>
 
-        <a href="/?tab=drivers" class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition flex items-center justify-between group {% if active_tab == 'drivers' %}ring-2 ring-indigo-500/20 border-indigo-200{% endif %}">
+        <!-- Drivers Card -->
+        <a href="/?tab=drivers" class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition flex items-center justify-between group {% if active_tab == 'drivers' %}ring-2 ring-indigo-500/20 border-indigo-200{% endif %}">
             <div>
-                <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Registered Drivers</p>
-                <p class="text-2xl font-bold text-slate-800 mt-1">{{ driver_count }}</p>
+                <p class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Drivers</p>
+                <p class="text-xl font-bold text-slate-800 mt-0.5">{{ driver_count }}</p>
+                <p class="text-[10px] text-slate-400 font-medium mt-1">Staff Operators</p>
             </div>
-            <div class="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-xl group-hover:scale-110 transition">
+            <div class="w-11 h-11 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-lg group-hover:scale-110 transition">
                 <i class="fa-solid fa-id-card"></i>
             </div>
         </a>
     </div>
 
     <!-- Active Tab Content Panel -->
-    {% if active_tab == 'warehouses' or not active_tab %}
+
+    {% if active_tab == 'shipments' or not active_tab %}
+    <!-- ============================================== -->
+    <!-- Shipments Panel -->
+    <!-- ============================================== -->
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="px-6 py-5 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-50/50">
+            <div>
+                <h2 class="text-base font-bold text-slate-800">Shipments Directory & Tracking</h2>
+                <p class="text-xs text-slate-500 mt-0.5">Strict state machine lifecycle (Processing &rarr; Dispatched &rarr; In Transit &rarr; Delivered)</p>
+            </div>
+            <div class="flex flex-wrap items-center gap-3">
+                {% if can_manage %}
+                <a href="{% url 'add_shipment' %}" class="inline-flex items-center justify-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg shadow-sm shadow-indigo-600/20 transition">
+                    <i class="fa-solid fa-plus mr-1.5 text-[10px]"></i> Create Shipment
+                </a>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Filter & Search Bar -->
+        <div class="px-6 py-3.5 border-b border-slate-100 bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <!-- Status Filter Chips -->
+            <div class="flex flex-wrap items-center gap-1.5 text-xs">
+                <span class="text-[11px] font-semibold text-slate-400 mr-1 uppercase">Filter:</span>
+                <a href="/?tab=shipments" class="px-2.5 py-1 rounded-lg font-medium transition {% if not status_filter %}bg-indigo-600 text-white font-semibold{% else %}bg-slate-100 text-slate-600 hover:bg-slate-200{% endif %}">
+                    All ({{ shipment_count }})
+                </a>
+                <a href="/?tab=shipments&status=PROCESSING" class="px-2.5 py-1 rounded-lg font-medium transition {% if status_filter == 'PROCESSING' %}bg-amber-600 text-white font-semibold{% else %}bg-amber-50 text-amber-700 hover:bg-amber-100{% endif %}">
+                    Processing ({{ processing_count }})
+                </a>
+                <a href="/?tab=shipments&status=DISPATCHED" class="px-2.5 py-1 rounded-lg font-medium transition {% if status_filter == 'DISPATCHED' %}bg-blue-600 text-white font-semibold{% else %}bg-blue-50 text-blue-700 hover:bg-blue-100{% endif %}">
+                    Dispatched ({{ dispatched_count }})
+                </a>
+                <a href="/?tab=shipments&status=IN_TRANSIT" class="px-2.5 py-1 rounded-lg font-medium transition {% if status_filter == 'IN_TRANSIT' %}bg-purple-600 text-white font-semibold{% else %}bg-purple-50 text-purple-700 hover:bg-purple-100{% endif %}">
+                    In Transit ({{ in_transit_count }})
+                </a>
+                <a href="/?tab=shipments&status=DELIVERED" class="px-2.5 py-1 rounded-lg font-medium transition {% if status_filter == 'DELIVERED' %}bg-emerald-600 text-white font-semibold{% else %}bg-emerald-50 text-emerald-700 hover:bg-emerald-100{% endif %}">
+                    Delivered ({{ delivered_count }})
+                </a>
+            </div>
+
+            <!-- Search Bar -->
+            <form method="get" action="/" class="relative">
+                <input type="hidden" name="tab" value="shipments">
+                {% if status_filter %}<input type="hidden" name="status" value="{{ status_filter }}">{% endif %}
+                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 pointer-events-none">
+                    <i class="fa-solid fa-magnifying-glass text-xs"></i>
+                </span>
+                <input type="text" name="q" value="{{ query }}" placeholder="Search tracking, recipient..."
+                    class="w-full sm:w-60 pl-8 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition">
+            </form>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="bg-slate-100/70 border-b border-slate-200 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                        <th class="px-6 py-3.5">Tracking Number</th>
+                        <th class="px-6 py-3.5">Package Details</th>
+                        <th class="px-6 py-3.5">Route & Transport</th>
+                        <th class="px-6 py-3.5">Weight</th>
+                        <th class="px-6 py-3.5">Lifecycle Status</th>
+                        <th class="px-6 py-3.5 text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 text-sm text-slate-700">
+                    {% for shipment in shipments %}
+                    <tr class="hover:bg-slate-50/80 transition">
+                        <!-- Tracking # -->
+                        <td class="px-6 py-4 font-mono font-bold text-slate-900">
+                            <a href="{% url 'shipment_detail' shipment.pk %}" class="hover:text-indigo-600 transition flex items-center group">
+                                <span class="bg-slate-900 group-hover:bg-indigo-600 text-amber-400 group-hover:text-white px-2.5 py-1 rounded text-xs tracking-wider transition">
+                                    {{ shipment.tracking_number }}
+                                </span>
+                            </a>
+                        </td>
+
+                        <!-- Title & Recipient -->
+                        <td class="px-6 py-4">
+                            <p class="font-semibold text-slate-900 text-sm">{{ shipment.title }}</p>
+                            <p class="text-xs text-slate-500 mt-0.5 flex items-center truncate max-w-xs">
+                                <i class="fa-solid fa-location-dot text-rose-400 mr-1 text-[10px]"></i>
+                                {{ shipment.destination_address }}
+                            </p>
+                            <p class="text-[11px] text-slate-400 mt-0.5">To: {{ shipment.recipient_name }} ({{ shipment.recipient_phone }})</p>
+                        </td>
+
+                        <!-- Route & Driver -->
+                        <td class="px-6 py-4">
+                            {% if shipment.route %}
+                                <a href="{% url 'route_detail' shipment.route.pk %}" class="font-mono text-xs font-semibold text-indigo-600 hover:underline block">
+                                    <i class="fa-solid fa-route mr-1 text-slate-400"></i> {{ shipment.route.route_code }}
+                                </a>
+                                {% if shipment.route.driver %}
+                                <p class="text-xs text-slate-600 mt-0.5">Driver: {{ shipment.route.driver.name }}</p>
+                                {% else %}
+                                <p class="text-xs text-slate-400 italic mt-0.5">No driver</p>
+                                {% endif %}
+                            {% else %}
+                                <span class="text-xs text-slate-400 italic">Unassigned route</span>
+                            {% endif %}
+                        </td>
+
+                        <!-- Weight -->
+                        <td class="px-6 py-4 font-medium text-slate-700">
+                            {{ shipment.weight }} <span class="text-xs text-slate-400">kg</span>
+                        </td>
+
+                        <!-- Status Badge -->
+                        <td class="px-6 py-4">
+                            {% if shipment.status == 'PROCESSING' %}
+                                <span class="px-2.5 py-1 text-xs font-bold rounded-full bg-amber-50 text-amber-700 border border-amber-200 inline-flex items-center">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-amber-500 mr-1.5 animate-pulse"></span> Processing
+                                </span>
+                            {% elif shipment.status == 'DISPATCHED' %}
+                                <span class="px-2.5 py-1 text-xs font-bold rounded-full bg-blue-50 text-blue-700 border border-blue-200 inline-flex items-center">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-blue-500 mr-1.5"></span> Dispatched
+                                </span>
+                            {% elif shipment.status == 'IN_TRANSIT' %}
+                                <span class="px-2.5 py-1 text-xs font-bold rounded-full bg-purple-50 text-purple-700 border border-purple-200 inline-flex items-center">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-purple-500 mr-1.5 animate-pulse"></span> In Transit
+                                </span>
+                            {% elif shipment.status == 'DELIVERED' %}
+                                <span class="px-2.5 py-1 text-xs font-bold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 inline-flex items-center">
+                                    <i class="fa-solid fa-circle-check text-emerald-500 mr-1.5 text-[11px]"></i> Delivered
+                                </span>
+                            {% else %}
+                                <span class="px-2.5 py-1 text-xs font-bold rounded-full bg-rose-50 text-rose-700 border border-rose-200 inline-flex items-center">
+                                    <i class="fa-solid fa-circle-xmark text-rose-500 mr-1.5 text-[11px]"></i> Cancelled
+                                </span>
+                            {% endif %}
+                        </td>
+
+                        <!-- Actions -->
+                        <td class="px-6 py-4 text-right space-x-1.5">
+                            <a href="{% url 'shipment_detail' shipment.pk %}" class="inline-flex items-center px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-semibold rounded-lg transition">
+                                <i class="fa-solid fa-eye mr-1"></i> Track
+                            </a>
+                            {% if can_manage %}
+                            <a href="{% url 'edit_shipment' shipment.pk %}" class="inline-flex items-center px-2 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs rounded-lg transition">
+                                <i class="fa-solid fa-pen"></i>
+                            </a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="px-6 py-12 text-center text-slate-400">
+                            <i class="fa-solid fa-boxes-packing text-3xl mb-2 text-slate-300 block"></i>
+                            No shipments found matching the criteria.{% if can_manage %} Click "Create Shipment" to register one.{% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {% elif active_tab == 'routes' %}
+    <!-- ============================================== -->
+    <!-- Routes Panel -->
+    <!-- ============================================== -->
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="px-6 py-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-50/50">
+            <div>
+                <h2 class="text-base font-bold text-slate-800">Dispatch Routes & Manifests</h2>
+                <p class="text-xs text-slate-500 mt-0.5">Manage transport route loops, driver assignments, and payload loads</p>
+            </div>
+            {% if can_manage %}
+            <a href="{% url 'add_route' %}" class="inline-flex items-center justify-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg shadow-sm shadow-blue-600/20 transition">
+                <i class="fa-solid fa-plus mr-1.5 text-[10px]"></i> Create Route
+            </a>
+            {% endif %}
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="bg-slate-100/70 border-b border-slate-200 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                        <th class="px-6 py-3.5">Route Code</th>
+                        <th class="px-6 py-3.5">Route Name</th>
+                        <th class="px-6 py-3.5">Origin / Destination</th>
+                        <th class="px-6 py-3.5">Transport & Driver</th>
+                        <th class="px-6 py-3.5">Load & Cargo</th>
+                        <th class="px-6 py-3.5">Status</th>
+                        <th class="px-6 py-3.5 text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 text-sm text-slate-700">
+                    {% for route in routes %}
+                    <tr class="hover:bg-slate-50/80 transition">
+                        <td class="px-6 py-4 font-mono font-bold text-slate-900">
+                            <a href="{% url 'route_detail' route.pk %}" class="hover:text-indigo-600 transition flex items-center">
+                                <span class="bg-indigo-950 text-indigo-300 px-2.5 py-1 rounded text-xs tracking-wider">
+                                    {{ route.route_code }}
+                                </span>
+                            </a>
+                        </td>
+                        <td class="px-6 py-4 font-semibold text-slate-900">
+                            {{ route.name }}
+                        </td>
+                        <td class="px-6 py-4 text-xs">
+                            <p class="font-semibold text-slate-800 flex items-center">
+                                <i class="fa-solid fa-warehouse text-indigo-400 mr-1.5 text-[10px]"></i> {{ route.origin_warehouse.name }}
+                            </p>
+                            {% if route.destination_warehouse %}
+                            <p class="text-slate-500 mt-0.5 flex items-center">
+                                <i class="fa-solid fa-location-dot text-emerald-500 mr-1.5 text-[10px]"></i> {{ route.destination_warehouse.name }}
+                            </p>
+                            {% else %}
+                            <p class="text-slate-400 italic mt-0.5">Multi-stop loop</p>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 text-xs">
+                            {% if route.driver %}
+                            <p class="font-bold text-slate-800">{{ route.driver.name }}</p>
+                            {% else %}
+                            <p class="text-slate-400 italic">No driver assigned</p>
+                            {% endif %}
+                            {% if route.vehicle %}
+                            <p class="font-mono text-slate-500 mt-0.5">{{ route.vehicle.license_plate }}</p>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="text-xs font-bold text-slate-800">{{ route.shipments.count }} pkg</span>
+                            <span class="text-xs text-slate-500">({{ route.total_weight }} kg)</span>
+                            {% if route.is_overcapacity %}
+                            <span class="block text-[10px] text-rose-600 font-bold uppercase mt-0.5">Over capacity!</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4">
+                            {% if route.status == 'PLANNED' %}
+                                <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+                                    Planned
+                                </span>
+                            {% elif route.status == 'IN_PROGRESS' %}
+                                <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                                    In Progress
+                                </span>
+                            {% elif route.status == 'COMPLETED' %}
+                                <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                    Completed
+                                </span>
+                            {% else %}
+                                <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-rose-50 text-rose-700 border border-rose-200">
+                                    Cancelled
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 text-right space-x-1.5">
+                            <a href="{% url 'route_detail' route.pk %}" class="inline-flex items-center px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold rounded-lg transition">
+                                <i class="fa-solid fa-eye mr-1"></i> View
+                            </a>
+                            {% if can_manage %}
+                            <a href="{% url 'edit_route' route.pk %}" class="inline-flex items-center px-2 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs rounded-lg transition">
+                                <i class="fa-solid fa-pen"></i>
+                            </a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="px-6 py-12 text-center text-slate-400">
+                            <i class="fa-solid fa-route text-3xl mb-2 text-slate-300 block"></i>
+                            No delivery routes created yet.{% if can_manage %} Click "Create Route" to configure one.{% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {% elif active_tab == 'warehouses' %}
+    <!-- ============================================== -->
     <!-- Warehouses Panel -->
-    <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+    <!-- ============================================== -->
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         <div class="px-6 py-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-50/50">
             <div>
                 <h2 class="text-base font-bold text-slate-800">Warehouses Directory</h2>
                 <p class="text-xs text-slate-500 mt-0.5">Manage distribution hubs and geolocation points</p>
             </div>
             {% if can_manage %}
-            <a href="{% url 'add_warehouse' %}" class="inline-flex items-center justify-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg shadow-sm shadow-indigo-600/20 transition">
-                <i class="fa-solid fa-plus mr-2 text-xs"></i> Add Warehouse
+            <a href="{% url 'add_warehouse' %}" class="inline-flex items-center justify-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg shadow-sm shadow-indigo-600/20 transition">
+                <i class="fa-solid fa-plus mr-1.5 text-[10px]"></i> Add Warehouse
             </a>
             {% endif %}
         </div>
 
-
         <div class="overflow-x-auto">
             <table class="w-full text-left border-collapse">
                 <thead>
-                    <tr class="bg-slate-100/70 border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                    <tr class="bg-slate-100/70 border-b border-slate-200 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
                         <th class="px-6 py-3.5">Warehouse Name</th>
                         <th class="px-6 py-3.5">Address</th>
                         <th class="px-6 py-3.5">Coordinates (Lat / Long)</th>
+                        {% if can_manage %}
                         <th class="px-6 py-3.5 text-right">Actions</th>
+                        {% endif %}
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100 text-sm text-slate-700">
@@ -121,6 +445,7 @@
                                 <i class="fa-solid fa-location-dot text-indigo-400 mr-1.5"></i> {{ warehouse.latitude }}, {{ warehouse.longitude }}
                             </span>
                         </td>
+                        {% if can_manage %}
                         <td class="px-6 py-4 text-right space-x-2">
                             <a href="{% url 'edit_warehouse' warehouse.pk %}" class="inline-flex items-center px-2.5 py-1.5 bg-slate-100 hover:bg-indigo-50 text-slate-600 hover:text-indigo-600 text-xs font-medium rounded transition">
                                 <i class="fa-solid fa-pen-to-square mr-1"></i> Edit
@@ -129,12 +454,13 @@
                                 <i class="fa-solid fa-trash mr-1"></i> Delete
                             </a>
                         </td>
+                        {% endif %}
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="4" class="px-6 py-12 text-center text-slate-400">
+                        <td colspan="{% if can_manage %}4{% else %}3{% endif %}" class="px-6 py-12 text-center text-slate-400">
                             <i class="fa-solid fa-warehouse text-3xl mb-2 text-slate-300 block"></i>
-                            No warehouses registered yet. Click "Add Warehouse" to create one.
+                            No warehouses registered yet.{% if can_manage %} Click "Add Warehouse" to create one.{% endif %}
                         </td>
                     </tr>
                     {% endfor %}
@@ -144,16 +470,18 @@
     </div>
 
     {% elif active_tab == 'vehicles' %}
+    <!-- ============================================== -->
     <!-- Vehicles Panel -->
-    <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+    <!-- ============================================== -->
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         <div class="px-6 py-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-50/50">
             <div>
                 <h2 class="text-base font-bold text-slate-800">Fleet Vehicles</h2>
                 <p class="text-xs text-slate-500 mt-0.5">Manage transport vehicles, capacity limits, and types</p>
             </div>
             {% if can_manage %}
-            <a href="{% url 'add_vehicle' %}" class="inline-flex items-center justify-center px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg shadow-sm shadow-emerald-600/20 transition">
-                <i class="fa-solid fa-plus mr-2 text-xs"></i> Add Vehicle
+            <a href="{% url 'add_vehicle' %}" class="inline-flex items-center justify-center px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg shadow-sm shadow-emerald-600/20 transition">
+                <i class="fa-solid fa-plus mr-1.5 text-[10px]"></i> Add Vehicle
             </a>
             {% endif %}
         </div>
@@ -161,7 +489,7 @@
         <div class="overflow-x-auto">
             <table class="w-full text-left border-collapse">
                 <thead>
-                    <tr class="bg-slate-100/70 border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                    <tr class="bg-slate-100/70 border-b border-slate-200 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
                         <th class="px-6 py-3.5">License Plate</th>
                         <th class="px-6 py-3.5">Vehicle Type</th>
                         <th class="px-6 py-3.5">Cargo Capacity</th>
@@ -221,16 +549,18 @@
     </div>
 
     {% elif active_tab == 'drivers' %}
+    <!-- ============================================== -->
     <!-- Drivers Panel -->
-    <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+    <!-- ============================================== -->
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         <div class="px-6 py-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-50/50">
             <div>
                 <h2 class="text-base font-bold text-slate-800">Drivers Directory</h2>
                 <p class="text-xs text-slate-500 mt-0.5">Register drivers and manage vehicle assignments</p>
             </div>
             {% if can_manage %}
-            <a href="{% url 'add_driver' %}" class="inline-flex items-center justify-center px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium rounded-lg shadow-sm shadow-amber-600/20 transition">
-                <i class="fa-solid fa-plus mr-2 text-xs"></i> Register Driver
+            <a href="{% url 'add_driver' %}" class="inline-flex items-center justify-center px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-lg shadow-sm shadow-amber-600/20 transition">
+                <i class="fa-solid fa-plus mr-1.5 text-[10px]"></i> Register Driver
             </a>
             {% endif %}
         </div>
@@ -238,7 +568,7 @@
         <div class="overflow-x-auto">
             <table class="w-full text-left border-collapse">
                 <thead>
-                    <tr class="bg-slate-100/70 border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                    <tr class="bg-slate-100/70 border-b border-slate-200 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
                         <th class="px-6 py-3.5">Driver Name</th>
                         <th class="px-6 py-3.5">Phone Number</th>
                         <th class="px-6 py-3.5">Assigned Vehicle</th>
@@ -294,7 +624,6 @@
         </div>
     </div>
     {% endif %}
-
 
 </div>
 {% endblock %}

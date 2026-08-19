@@ -1,0 +1,377 @@
+{% extends 'base.html' %}
+
+{% block title %}Shipment #{{ shipment.tracking_number }} - LogiTrack{% endblock %}
+
+{% block header_title %}
+    <div class="flex items-center space-x-3">
+        <a href="/?tab=shipments" class="text-slate-400 hover:text-indigo-600 transition text-sm">
+            <i class="fa-solid fa-arrow-left mr-1"></i> Shipments
+        </a>
+        <span class="text-slate-300">/</span>
+        <span class="font-mono text-slate-700">#{{ shipment.tracking_number }}</span>
+    </div>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-6">
+
+    <!-- Top Card: Header & State Transition Stepper -->
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-slate-100">
+            <div>
+                <div class="flex items-center space-x-3">
+                    <span class="font-mono bg-slate-900 text-amber-400 px-3 py-1 rounded-lg text-sm font-bold tracking-wider uppercase">
+                        {{ shipment.tracking_number }}
+                    </span>
+                    
+                    {% if shipment.status == 'PROCESSING' %}
+                        <span class="px-3 py-1 text-xs font-bold rounded-full bg-amber-50 text-amber-700 border border-amber-200 flex items-center">
+                            <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse mr-1.5"></span> Processing
+                        </span>
+                    {% elif shipment.status == 'DISPATCHED' %}
+                        <span class="px-3 py-1 text-xs font-bold rounded-full bg-blue-50 text-blue-700 border border-blue-200 flex items-center">
+                            <span class="w-2 h-2 rounded-full bg-blue-500 mr-1.5"></span> Dispatched
+                        </span>
+                    {% elif shipment.status == 'IN_TRANSIT' %}
+                        <span class="px-3 py-1 text-xs font-bold rounded-full bg-purple-50 text-purple-700 border border-purple-200 flex items-center">
+                            <span class="w-2 h-2 rounded-full bg-purple-500 animate-pulse mr-1.5"></span> In Transit
+                        </span>
+                    {% elif shipment.status == 'DELIVERED' %}
+                        <span class="px-3 py-1 text-xs font-bold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center">
+                            <i class="fa-solid fa-circle-check text-emerald-500 mr-1.5"></i> Delivered
+                        </span>
+                    {% else %}
+                        <span class="px-3 py-1 text-xs font-bold rounded-full bg-rose-50 text-rose-700 border border-rose-200 flex items-center">
+                            <i class="fa-solid fa-circle-xmark text-rose-500 mr-1.5"></i> Cancelled
+                        </span>
+                    {% endif %}
+                </div>
+                <h1 class="text-2xl font-bold text-slate-900 mt-2">{{ shipment.title }}</h1>
+                <p class="text-xs text-slate-500 mt-0.5">Created on {{ shipment.created_at|date:"M d, Y • H:i" }} UTC</p>
+            </div>
+
+            <!-- Action Buttons for Dispatchers/Managers -->
+            {% if can_manage %}
+            <div class="flex items-center space-x-2">
+                <a href="{% url 'edit_shipment' shipment.pk %}" class="inline-flex items-center px-3.5 py-2 bg-slate-100 hover:bg-indigo-50 text-slate-700 hover:text-indigo-600 text-xs font-semibold rounded-lg transition border border-slate-200">
+                    <i class="fa-solid fa-pen-to-square mr-1.5"></i> Edit
+                </a>
+                <a href="{% url 'delete_shipment' shipment.pk %}" class="inline-flex items-center px-3.5 py-2 bg-slate-100 hover:bg-rose-50 text-slate-700 hover:text-rose-600 text-xs font-semibold rounded-lg transition border border-slate-200">
+                    <i class="fa-solid fa-trash mr-1.5"></i> Delete
+                </a>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Strict State Machine Visualizer (Progress Stepper) -->
+        <div class="py-8">
+            <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-6">Shipment Lifecycle Progression</h3>
+            
+            <div class="relative flex flex-col sm:flex-row justify-between items-center gap-6 sm:gap-0">
+                <!-- Background Connection Line -->
+                <div class="hidden sm:block absolute top-1/2 left-8 right-8 h-1 -translate-y-1/2 bg-slate-200 z-0"></div>
+                
+                <!-- Step 1: Processing -->
+                <div class="relative z-10 flex flex-col items-center text-center">
+                    <div class="w-12 h-12 rounded-full flex items-center justify-center font-bold text-sm transition-all duration-300 {% if shipment.status == 'PROCESSING' %}bg-amber-500 text-white ring-4 ring-amber-100 shadow-lg shadow-amber-500/30{% elif shipment.status != 'CANCELLED' %}bg-emerald-600 text-white ring-4 ring-emerald-50{% else %}bg-slate-200 text-slate-400{% endif %}">
+                        {% if shipment.status != 'PROCESSING' and shipment.status != 'CANCELLED' %}
+                            <i class="fa-solid fa-check"></i>
+                        {% else %}
+                            <i class="fa-solid fa-box-open"></i>
+                        {% endif %}
+                    </div>
+                    <span class="text-xs font-bold mt-2 text-slate-800">1. Processing</span>
+                    <span class="text-[10px] text-slate-400">Order logged</span>
+                </div>
+
+                <!-- Step 2: Dispatched -->
+                <div class="relative z-10 flex flex-col items-center text-center">
+                    <div class="w-12 h-12 rounded-full flex items-center justify-center font-bold text-sm transition-all duration-300 {% if shipment.status == 'DISPATCHED' %}bg-blue-600 text-white ring-4 ring-blue-100 shadow-lg shadow-blue-600/30{% elif shipment.status == 'IN_TRANSIT' or shipment.status == 'DELIVERED' %}bg-emerald-600 text-white ring-4 ring-emerald-50{% else %}bg-slate-200 text-slate-400{% endif %}">
+                        {% if shipment.status == 'IN_TRANSIT' or shipment.status == 'DELIVERED' %}
+                            <i class="fa-solid fa-check"></i>
+                        {% else %}
+                            <i class="fa-solid fa-truck-ramp-box"></i>
+                        {% endif %}
+                    </div>
+                    <span class="text-xs font-bold mt-2 text-slate-800">2. Dispatched</span>
+                    <span class="text-[10px] text-slate-400">Assigned to route</span>
+                </div>
+
+                <!-- Step 3: In Transit -->
+                <div class="relative z-10 flex flex-col items-center text-center">
+                    <div class="w-12 h-12 rounded-full flex items-center justify-center font-bold text-sm transition-all duration-300 {% if shipment.status == 'IN_TRANSIT' %}bg-purple-600 text-white ring-4 ring-purple-100 shadow-lg shadow-purple-600/30 animate-bounce{% elif shipment.status == 'DELIVERED' %}bg-emerald-600 text-white ring-4 ring-emerald-50{% else %}bg-slate-200 text-slate-400{% endif %}">
+                        {% if shipment.status == 'DELIVERED' %}
+                            <i class="fa-solid fa-check"></i>
+                        {% else %}
+                            <i class="fa-solid fa-truck-fast"></i>
+                        {% endif %}
+                    </div>
+                    <span class="text-xs font-bold mt-2 text-slate-800">3. In Transit</span>
+                    <span class="text-[10px] text-slate-400">On vehicle / moving</span>
+                </div>
+
+                <!-- Step 4: Delivered -->
+                <div class="relative z-10 flex flex-col items-center text-center">
+                    <div class="w-12 h-12 rounded-full flex items-center justify-center font-bold text-sm transition-all duration-300 {% if shipment.status == 'DELIVERED' %}bg-emerald-600 text-white ring-4 ring-emerald-100 shadow-lg shadow-emerald-600/30{% else %}bg-slate-200 text-slate-400{% endif %}">
+                        <i class="fa-solid fa-circle-check"></i>
+                    </div>
+                    <span class="text-xs font-bold mt-2 text-slate-800">4. Delivered</span>
+                    <span class="text-[10px] text-slate-400">Recipient received</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- State Transition Trigger Panel -->
+        {% if can_update_status and allowed_transitions %}
+        <div class="mt-6 pt-6 border-t border-slate-100 bg-slate-50/80 -mx-6 sm:-mx-8 -mb-6 sm:-mb-8 p-6 sm:p-8 rounded-b-2xl">
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div>
+                    <h4 class="text-sm font-bold text-slate-800 flex items-center">
+                        <i class="fa-solid fa-arrows-spin text-indigo-600 mr-2"></i>
+                        Advance Lifecycle State
+                    </h4>
+                    <p class="text-xs text-slate-500 mt-0.5">Strict state machine enforces sequentially valid transitions.</p>
+                </div>
+
+                <!-- Transition Buttons -->
+                <div class="flex flex-wrap items-center gap-2">
+                    {% for target in allowed_transitions %}
+                        <button type="button" onclick="openTransitionModal('{{ target }}')"
+                            class="px-4 py-2.5 rounded-lg text-xs font-bold shadow-sm transition flex items-center space-x-1.5
+                            {% if target == 'DISPATCHED' %}bg-blue-600 hover:bg-blue-700 text-white shadow-blue-600/20
+                            {% elif target == 'IN_TRANSIT' %}bg-purple-600 hover:bg-purple-700 text-white shadow-purple-600/20
+                            {% elif target == 'DELIVERED' %}bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20
+                            {% elif target == 'PROCESSING' %}bg-amber-600 hover:bg-amber-700 text-white shadow-amber-600/20
+                            {% else %}bg-rose-600 hover:bg-rose-700 text-white shadow-rose-600/20{% endif %}">
+                            <span>Mark as {{ target|title }}</span>
+                            <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                        </button>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% elif shipment.status == 'DELIVERED' %}
+        <div class="mt-6 pt-4 border-t border-slate-100 bg-emerald-50/60 -mx-6 sm:-mx-8 -mb-6 sm:-mb-8 p-4 px-6 sm:px-8 rounded-b-2xl flex items-center space-x-3 text-emerald-800 text-xs font-semibold">
+            <i class="fa-solid fa-circle-check text-emerald-600 text-base"></i>
+            <span>This shipment has been successfully delivered and reached its final terminal state.</span>
+        </div>
+        {% elif shipment.status == 'CANCELLED' %}
+        <div class="mt-6 pt-4 border-t border-slate-100 bg-rose-50/60 -mx-6 sm:-mx-8 -mb-6 sm:-mb-8 p-4 px-6 sm:px-8 rounded-b-2xl flex items-center space-x-3 text-rose-800 text-xs font-semibold">
+            <i class="fa-solid fa-circle-xmark text-rose-600 text-base"></i>
+            <span>This shipment has been cancelled. No further transitions are permitted.</span>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Details Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        <!-- Column 1 & 2: Logistics Info -->
+        <div class="lg:col-span-2 space-y-6">
+
+            <!-- Package & Destination Specs -->
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-5">
+                <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center">
+                    <i class="fa-solid fa-box text-indigo-500 mr-2"></i> Package & Delivery Destination
+                </h3>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="p-4 rounded-xl bg-slate-50 border border-slate-100">
+                        <span class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">Origin Warehouse</span>
+                        <p class="text-sm font-bold text-slate-800 mt-1 flex items-center">
+                            <i class="fa-solid fa-warehouse text-indigo-400 mr-2"></i> {{ shipment.origin_warehouse.name }}
+                        </p>
+                        <p class="text-xs text-slate-500 mt-1">{{ shipment.origin_warehouse.address }}</p>
+                    </div>
+
+                    <div class="p-4 rounded-xl bg-slate-50 border border-slate-100">
+                        <span class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">Package Payload</span>
+                        <p class="text-sm font-bold text-slate-800 mt-1 flex items-center">
+                            <i class="fa-solid fa-weight-hanging text-amber-500 mr-2"></i> {{ shipment.weight }} kg
+                        </p>
+                        <p class="text-xs text-slate-500 mt-1">Cargo Class: Standard Freight</p>
+                    </div>
+                </div>
+
+                <div class="p-4 rounded-xl bg-slate-50 border border-slate-100">
+                    <span class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">Destination Address</span>
+                    <p class="text-sm font-semibold text-slate-800 mt-1 flex items-start">
+                        <i class="fa-solid fa-location-dot text-rose-500 mr-2 mt-0.5"></i>
+                        <span>{{ shipment.destination_address }}</span>
+                    </p>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="p-4 rounded-xl bg-slate-50 border border-slate-100">
+                        <span class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">Recipient Contact</span>
+                        <p class="text-sm font-bold text-slate-800 mt-1">{{ shipment.recipient_name }}</p>
+                        <p class="text-xs text-slate-500 mt-0.5 flex items-center">
+                            <i class="fa-solid fa-phone text-slate-400 mr-1.5 text-[10px]"></i> {{ shipment.recipient_phone }}
+                        </p>
+                    </div>
+
+                    <div class="p-4 rounded-xl bg-slate-50 border border-slate-100">
+                        <span class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">Delivered Timestamp</span>
+                        {% if shipment.delivered_at %}
+                        <p class="text-sm font-bold text-emerald-700 mt-1">{{ shipment.delivered_at|date:"M d, Y • H:i" }}</p>
+                        {% else %}
+                        <p class="text-xs text-slate-400 italic mt-1">Pending delivery completion</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Route Assignment -->
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center">
+                        <i class="fa-solid fa-route text-indigo-500 mr-2"></i> Transport & Route Assignment
+                    </h3>
+                    {% if shipment.route %}
+                    <a href="{% url 'route_detail' shipment.route.pk %}" class="text-xs font-semibold text-indigo-600 hover:text-indigo-700">
+                        View Full Route <i class="fa-solid fa-arrow-right ml-1"></i>
+                    </a>
+                    {% endif %}
+                </div>
+
+                {% if shipment.route %}
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div class="p-4 rounded-xl bg-slate-50 border border-slate-100">
+                        <span class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">Assigned Route</span>
+                        <p class="text-sm font-bold text-slate-800 mt-1 font-mono">{{ shipment.route.route_code }}</p>
+                        <p class="text-xs text-slate-500 truncate">{{ shipment.route.name }}</p>
+                    </div>
+
+                    <div class="p-4 rounded-xl bg-slate-50 border border-slate-100">
+                        <span class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">Assigned Driver</span>
+                        {% if shipment.route.driver %}
+                        <p class="text-sm font-bold text-slate-800 mt-1">{{ shipment.route.driver.name }}</p>
+                        <p class="text-xs text-slate-500">{{ shipment.route.driver.phone }}</p>
+                        {% else %}
+                        <p class="text-xs text-amber-600 italic mt-1">No driver assigned</p>
+                        {% endif %}
+                    </div>
+
+                    <div class="p-4 rounded-xl bg-slate-50 border border-slate-100">
+                        <span class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">Assigned Vehicle</span>
+                        {% if shipment.route.vehicle %}
+                        <p class="text-sm font-bold font-mono text-slate-800 mt-1">{{ shipment.route.vehicle.license_plate }}</p>
+                        <p class="text-xs text-slate-500">{{ shipment.route.vehicle.get_vehicle_type_display }} (Cap: {{ shipment.route.vehicle.capacity }}kg)</p>
+                        {% else %}
+                        <p class="text-xs text-amber-600 italic mt-1">No vehicle assigned</p>
+                        {% endif %}
+                    </div>
+                </div>
+                {% else %}
+                <div class="p-6 text-center bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                    <i class="fa-solid fa-route text-2xl text-slate-300 mb-2"></i>
+                    <p class="text-xs text-slate-500">This shipment is currently unassigned to any delivery route.</p>
+                    {% if can_manage %}
+                    <a href="{% url 'edit_shipment' shipment.pk %}" class="inline-block mt-3 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-semibold rounded-lg transition">
+                        Assign to a Route
+                    </a>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+
+        </div>
+
+        <!-- Column 3: State Transition Audit History -->
+        <div class="space-y-6">
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+                <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider mb-4 flex items-center">
+                    <i class="fa-solid fa-clock-rotate-left text-indigo-500 mr-2"></i> Audit Trail History
+                </h3>
+
+                <div class="relative pl-6 space-y-6 before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200">
+                    {% for log in logs %}
+                    <div class="relative">
+                        <div class="absolute -left-6 top-1 w-3 h-3 rounded-full bg-indigo-600 ring-4 ring-white"></div>
+                        <div class="text-xs">
+                            <span class="font-bold text-slate-800 uppercase">{{ log.to_status }}</span>
+                            {% if log.from_status %}
+                            <span class="text-slate-400 text-[10px]">from {{ log.from_status }}</span>
+                            {% endif %}
+                            <p class="text-[10px] text-slate-400 mt-0.5">{{ log.timestamp|date:"M d, Y • H:i:s" }}</p>
+                            {% if log.notes %}
+                            <p class="text-xs text-slate-600 mt-1 bg-slate-50 p-2 rounded border border-slate-100">{{ log.notes }}</p>
+                            {% endif %}
+                            {% if log.changed_by %}
+                            <p class="text-[10px] text-indigo-600 mt-1 flex items-center font-medium">
+                                <i class="fa-solid fa-user-check mr-1 text-[9px]"></i> {{ log.changed_by.username }}
+                            </p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% empty %}
+                    <p class="text-xs text-slate-400">No status change history recorded yet.</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+</div>
+
+<!-- State Transition Modal -->
+<div id="transitionModal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-base font-bold text-slate-800 flex items-center">
+                <i class="fa-solid fa-arrows-spin text-indigo-600 mr-2"></i> Confirm State Transition
+            </h3>
+            <button type="button" onclick="closeTransitionModal()" class="text-slate-400 hover:text-slate-600">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+        </div>
+
+        <form method="post" action="{% url 'update_shipment_status' shipment.pk %}" class="space-y-4">
+            {% csrf_token %}
+            <input type="hidden" name="target_status" id="modalTargetStatus" value="">
+
+            <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-1">
+                <div class="flex justify-between">
+                    <span class="text-slate-500">Current Status:</span>
+                    <span class="font-bold text-slate-800">{{ shipment.get_status_display }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-slate-500">Target Status:</span>
+                    <span class="font-bold text-indigo-600" id="modalTargetStatusText">-</span>
+                </div>
+            </div>
+
+            <div>
+                <label for="statusNotes" class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Transition Notes / Reason
+                </label>
+                <textarea name="notes" id="statusNotes" rows="3"
+                    class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    placeholder="e.g. Package inspected and loaded onto van RT-101..."></textarea>
+            </div>
+
+            <div class="flex items-center justify-end space-x-3 pt-2">
+                <button type="button" onclick="closeTransitionModal()" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition">
+                    Cancel
+                </button>
+                <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg shadow-md shadow-indigo-600/30 transition">
+                    Confirm Transition
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function openTransitionModal(targetStatus) {
+        document.getElementById('modalTargetStatus').value = targetStatus;
+        document.getElementById('modalTargetStatusText').textContent = targetStatus;
+        document.getElementById('transitionModal').classList.remove('hidden');
+    }
+
+    function closeTransitionModal() {
+        document.getElementById('transitionModal').classList.add('hidden');
+    }
+</script>
+{% endblock %}

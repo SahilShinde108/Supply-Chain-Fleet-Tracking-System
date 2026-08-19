@@ -30,15 +30,37 @@
 
             <!-- Navigation Links -->
             <nav class="p-4 space-y-1.5">
-                <div class="px-3 py-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">Fleet Core</div>
+                <div class="px-3 py-1.5 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Logistics & Tracking</div>
                 
-                <a href="/?tab=warehouses" class="flex items-center justify-between px-3.5 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 {% if active_tab == 'warehouses' or not active_tab %}bg-indigo-600 text-white shadow-md shadow-indigo-600/30{% else %}hover:bg-slate-800 hover:text-white text-slate-400{% endif %}">
+                <a href="/?tab=shipments" class="flex items-center justify-between px-3.5 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 {% if active_tab == 'shipments' or not active_tab %}bg-indigo-600 text-white shadow-md shadow-indigo-600/30{% else %}hover:bg-slate-800 hover:text-white text-slate-400{% endif %}">
                     <div class="flex items-center">
-                        <i class="fa-solid fa-warehouse w-5 text-center mr-3 {% if active_tab == 'warehouses' or not active_tab %}text-white{% else %}text-slate-400{% endif %}"></i>
+                        <i class="fa-solid fa-boxes-packing w-5 text-center mr-3 {% if active_tab == 'shipments' or not active_tab %}text-white{% else %}text-slate-400{% endif %}"></i>
+                        <span>Shipments</span>
+                    </div>
+                    {% if shipment_count is not None %}
+                    <span class="text-xs px-2 py-0.5 rounded-full {% if active_tab == 'shipments' or not active_tab %}bg-indigo-500 text-white{% else %}bg-slate-800 text-slate-400{% endif %}">{{ shipment_count }}</span>
+                    {% endif %}
+                </a>
+
+                <a href="/?tab=routes" class="flex items-center justify-between px-3.5 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 {% if active_tab == 'routes' %}bg-indigo-600 text-white shadow-md shadow-indigo-600/30{% else %}hover:bg-slate-800 hover:text-white text-slate-400{% endif %}">
+                    <div class="flex items-center">
+                        <i class="fa-solid fa-route w-5 text-center mr-3 {% if active_tab == 'routes' %}text-white{% else %}text-slate-400{% endif %}"></i>
+                        <span>Routes</span>
+                    </div>
+                    {% if route_count is not None %}
+                    <span class="text-xs px-2 py-0.5 rounded-full {% if active_tab == 'routes' %}bg-indigo-500 text-white{% else %}bg-slate-800 text-slate-400{% endif %}">{{ route_count }}</span>
+                    {% endif %}
+                </a>
+
+                <div class="pt-3 px-3 py-1.5 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Fleet Core</div>
+                
+                <a href="/?tab=warehouses" class="flex items-center justify-between px-3.5 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 {% if active_tab == 'warehouses' %}bg-indigo-600 text-white shadow-md shadow-indigo-600/30{% else %}hover:bg-slate-800 hover:text-white text-slate-400{% endif %}">
+                    <div class="flex items-center">
+                        <i class="fa-solid fa-warehouse w-5 text-center mr-3 {% if active_tab == 'warehouses' %}text-white{% else %}text-slate-400{% endif %}"></i>
                         <span>Warehouses</span>
                     </div>
                     {% if warehouse_count is not None %}
-                    <span class="text-xs px-2 py-0.5 rounded-full {% if active_tab == 'warehouses' or not active_tab %}bg-indigo-500 text-white{% else %}bg-slate-800 text-slate-400{% endif %}">{{ warehouse_count }}</span>
+                    <span class="text-xs px-2 py-0.5 rounded-full {% if active_tab == 'warehouses' %}bg-indigo-500 text-white{% else %}bg-slate-800 text-slate-400{% endif %}">{{ warehouse_count }}</span>
                     {% endif %}
                 </a>
 
@@ -105,19 +127,30 @@
     <div class="flex-1 flex flex-col min-w-0">
         {% if user.is_authenticated %}
         <!-- Top Navbar -->
-        <header class="h-16 bg-white border-b border-slate-200 px-6 flex items-center justify-between sticky top-0 z-10 shadow-sm">
+        <header class="h-16 bg-white border-b border-slate-200 px-6 flex items-center justify-between sticky top-0 z-10 shadow-sm gap-4">
             <div class="flex items-center space-x-4">
-                <h1 class="text-lg font-semibold text-slate-800">
-                    {% block header_title %}Fleet Control Hub{% endblock %}
+                <h1 class="text-lg font-bold text-slate-800 tracking-tight">
+                    {% block header_title %}Fleet & Logistics Hub{% endblock %}
                 </h1>
             </div>
+
+            <!-- Global Tracking Quick-Search -->
             <div class="flex items-center space-x-3">
-                <span class="text-xs font-medium bg-slate-100 text-slate-600 px-3 py-1.5 rounded-full border border-slate-200">
+                <form method="get" action="{% url 'track_shipment_lookup' %}" class="relative hidden sm:block">
+                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 pointer-events-none">
+                        <i class="fa-solid fa-magnifying-glass text-xs"></i>
+                    </span>
+                    <input type="text" name="tracking" placeholder="Track shipment (e.g. SHP-123)..."
+                        class="w-56 lg:w-72 pl-8 pr-4 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition">
+                </form>
+
+                <span class="text-xs font-medium bg-slate-100 text-slate-600 px-3 py-1.5 rounded-full border border-slate-200 whitespace-nowrap">
                     <i class="fa-regular fa-clock mr-1 text-slate-400"></i> Active Session
                 </span>
             </div>
         </header>
         {% endif %}
+
 
         <!-- Page Main Content -->
         <main class="flex-1 p-6 md:p-8 overflow-y-auto">

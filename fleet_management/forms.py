@@ -1,6 +1,6 @@
 from django import forms
 from django.contrib.auth.models import User, Group
-from .models import Warehouse, Vehicle, Driver
+from .models import Warehouse, Vehicle, Driver, Route, Shipment
 
 input_css = "w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition shadow-sm text-slate-800 bg-white"
 
@@ -136,4 +136,43 @@ class SignUpForm(forms.Form):
             )
 
         return user
+
+class RouteForm(forms.ModelForm):
+    class Meta:
+        model = Route
+        fields = ['route_code', 'name', 'origin_warehouse', 'destination_warehouse', 'driver', 'vehicle', 'status', 'notes']
+        widgets = {
+            'route_code': forms.TextInput(attrs={'class': input_css, 'placeholder': 'e.g. RT-NORTH-101'}),
+            'name': forms.TextInput(attrs={'class': input_css, 'placeholder': 'e.g. Downtown Metro Express Loop'}),
+            'origin_warehouse': forms.Select(attrs={'class': input_css}),
+            'destination_warehouse': forms.Select(attrs={'class': input_css}),
+            'driver': forms.Select(attrs={'class': input_css}),
+            'vehicle': forms.Select(attrs={'class': input_css}),
+            'status': forms.Select(attrs={'class': input_css}),
+            'notes': forms.Textarea(attrs={'class': input_css, 'rows': 2, 'placeholder': 'Optional route notes, dispatch instructions...'}),
+        }
+
+class ShipmentForm(forms.ModelForm):
+    class Meta:
+        model = Shipment
+        fields = ['title', 'origin_warehouse', 'destination_address', 'recipient_name', 'recipient_phone', 'weight', 'route']
+        widgets = {
+            'title': forms.TextInput(attrs={'class': input_css, 'placeholder': 'e.g. Retail Package / Electronics Batch #12'}),
+            'origin_warehouse': forms.Select(attrs={'class': input_css}),
+            'destination_address': forms.Textarea(attrs={'class': input_css, 'rows': 3, 'placeholder': 'Street, Building, City, ZIP Code...'}),
+            'recipient_name': forms.TextInput(attrs={'class': input_css, 'placeholder': 'e.g. Sarah Connor'}),
+            'recipient_phone': forms.TextInput(attrs={'class': input_css, 'placeholder': '+1 (555) 234-5678'}),
+            'weight': forms.NumberInput(attrs={'class': input_css, 'step': '0.01', 'placeholder': 'Weight in kg'}),
+            'route': forms.Select(attrs={'class': input_css}),
+        }
+
+class ShipmentStatusUpdateForm(forms.Form):
+    target_status = forms.ChoiceField(
+        choices=Shipment.STATUS_CHOICES,
+        widget=forms.Select(attrs={'class': input_css})
+    )
+    notes = forms.CharField(
+        required=False,
+        widget=forms.Textarea(attrs={'class': input_css, 'rows': 2, 'placeholder': 'Reason or notes for status transition...'})
+    )
 

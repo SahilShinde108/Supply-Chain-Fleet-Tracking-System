@@ -7,7 +7,20 @@ urlpatterns = [
     path('logout/', views.logout_view, name='logout'),
     path('', views.dashboard, name='dashboard'),
 
-    
+    # Shipment URLs
+    path('shipment/add/', views.add_shipment, name='add_shipment'),
+    path('shipment/<int:pk>/', views.shipment_detail, name='shipment_detail'),
+    path('shipment/<int:pk>/edit/', views.edit_shipment, name='edit_shipment'),
+    path('shipment/<int:pk>/delete/', views.delete_shipment, name='delete_shipment'),
+    path('shipment/<int:pk>/update-status/', views.update_shipment_status, name='update_shipment_status'),
+    path('track/', views.track_shipment_lookup, name='track_shipment_lookup'),
+
+    # Route URLs
+    path('route/add/', views.add_route, name='add_route'),
+    path('route/<int:pk>/', views.route_detail, name='route_detail'),
+    path('route/<int:pk>/edit/', views.edit_route, name='edit_route'),
+    path('route/<int:pk>/delete/', views.delete_route, name='delete_route'),
+
     # Warehouse URLs
     path('add-warehouse/', views.add_warehouse, name='add_warehouse'),
     path('warehouse/<int:pk>/edit/', views.edit_warehouse, name='edit_warehouse'),
@@ -23,3 +36,4 @@ urlpatterns = [
     path('driver/<int:pk>/edit/', views.edit_driver, name='edit_driver'),
     path('driver/<int:pk>/delete/', views.delete_driver, name='delete_driver'),
 ]
+
