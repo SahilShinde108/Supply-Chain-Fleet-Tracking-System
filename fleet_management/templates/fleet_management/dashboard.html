@@ -42,22 +42,31 @@
                     <p class="text-xs text-slate-400 mt-0.5">Phone: {{ driver_profile.phone }}</p>
                 </div>
             </div>
-            <div class="bg-slate-800/80 backdrop-blur rounded-xl p-4 border border-slate-700/80 flex items-center space-x-3">
-                <div class="w-10 h-10 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center text-lg">
-                    <i class="fa-solid fa-truck"></i>
+            <div class="flex flex-wrap items-center gap-3">
+                <div class="bg-slate-800/80 backdrop-blur rounded-xl p-4 border border-slate-700/80 flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center text-lg">
+                        <i class="fa-solid fa-truck"></i>
+                    </div>
+                    <div>
+                        <p class="text-[10px] uppercase font-semibold text-slate-400 tracking-wider">Assigned Vehicle</p>
+                        {% if driver_profile.vehicle %}
+                        <p class="text-sm font-bold font-mono text-amber-300">{{ driver_profile.vehicle.license_plate }} ({{ driver_profile.vehicle.get_vehicle_type_display }})</p>
+                        {% else %}
+                        <p class="text-xs text-slate-400 italic">No vehicle assigned yet</p>
+                        {% endif %}
+                    </div>
                 </div>
-                <div>
-                    <p class="text-[10px] uppercase font-semibold text-slate-400 tracking-wider">Assigned Vehicle</p>
-                    {% if driver_profile.vehicle %}
-                    <p class="text-sm font-bold font-mono text-amber-300">{{ driver_profile.vehicle.license_plate }} ({{ driver_profile.vehicle.get_vehicle_type_display }})</p>
-                    {% else %}
-                    <p class="text-xs text-slate-400 italic">No vehicle assigned yet</p>
-                    {% endif %}
-                </div>
+
+                <a href="{% url 'driver_portal' %}" class="inline-flex items-center px-4 py-3 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-indigo-600/30 transition">
+                    <i class="fa-solid fa-clipboard-list mr-2"></i>
+                    <span>Open My Ordered Stop-List</span>
+                    <i class="fa-solid fa-arrow-right ml-2 text-[10px]"></i>
+                </a>
             </div>
         </div>
     </div>
     {% endif %}
+
 
     <!-- Stat Summary Cards -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">

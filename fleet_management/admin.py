@@ -1,11 +1,17 @@
 from django.contrib import admin
-from .models import Warehouse, Vehicle, Driver, Route, Shipment, ShipmentStatusLog
+from .models import Warehouse, Vehicle, Driver, Route, Shipment, ShipmentStatusLog, RouteStop
 
 class ShipmentStatusLogInLine(admin.TabularInline):
     model = ShipmentStatusLog
     extra = 0
     readonly_fields = ('from_status', 'to_status', 'changed_by', 'timestamp', 'notes')
     can_delete = False
+
+class RouteStopInline(admin.TabularInline):
+    model = RouteStop
+    extra = 1
+    fields = ('stop_number', 'shipment', 'status', 'instructions')
+    ordering = ('stop_number',)
 
 @admin.register(Warehouse)
 class WarehouseAdmin(admin.ModelAdmin):
@@ -28,6 +34,14 @@ class RouteAdmin(admin.ModelAdmin):
     list_display = ('route_code', 'name', 'origin_warehouse', 'destination_warehouse', 'driver', 'vehicle', 'status')
     list_filter = ('status', 'origin_warehouse')
     search_fields = ('route_code', 'name')
+    inlines = [RouteStopInline]
+
+@admin.register(RouteStop)
+class RouteStopAdmin(admin.ModelAdmin):
+    list_display = ('route', 'stop_number', 'shipment', 'status', 'completed_at')
+    list_filter = ('status', 'route')
+    search_fields = ('route__route_code', 'shipment__tracking_number', 'instructions')
+
 
 @admin.register(Shipment)
 class ShipmentAdmin(admin.ModelAdmin):

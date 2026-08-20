@@ -1,8 +1,9 @@
 from django import forms
 from django.contrib.auth.models import User, Group
-from .models import Warehouse, Vehicle, Driver, Route, Shipment
+from .models import Warehouse, Vehicle, Driver, Route, Shipment, RouteStop
 
 input_css = "w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition shadow-sm text-slate-800 bg-white"
+
 
 class WarehouseForm(forms.ModelForm):
     class Meta:
@@ -175,4 +176,15 @@ class ShipmentStatusUpdateForm(forms.Form):
         required=False,
         widget=forms.Textarea(attrs={'class': input_css, 'rows': 2, 'placeholder': 'Reason or notes for status transition...'})
     )
+
+class RouteStopForm(forms.ModelForm):
+    class Meta:
+        model = RouteStop
+        fields = ['shipment', 'stop_number', 'instructions']
+        widgets = {
+            'shipment': forms.Select(attrs={'class': input_css}),
+            'stop_number': forms.NumberInput(attrs={'class': input_css, 'placeholder': 'Auto-assigned sequence'}),
+            'instructions': forms.TextInput(attrs={'class': input_css, 'placeholder': 'e.g. Ring front gate buzzer #204, fragile'}),
+        }
+
 

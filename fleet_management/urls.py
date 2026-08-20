@@ -15,11 +15,20 @@ urlpatterns = [
     path('shipment/<int:pk>/update-status/', views.update_shipment_status, name='update_shipment_status'),
     path('track/', views.track_shipment_lookup, name='track_shipment_lookup'),
 
-    # Route URLs
+    # Route & Multi-Stop URLs
     path('route/add/', views.add_route, name='add_route'),
     path('route/<int:pk>/', views.route_detail, name='route_detail'),
     path('route/<int:pk>/edit/', views.edit_route, name='edit_route'),
     path('route/<int:pk>/delete/', views.delete_route, name='delete_route'),
+    path('route/<int:route_pk>/add-stop/', views.add_route_stop, name='add_route_stop'),
+    path('route/<int:route_pk>/dispatch-all/', views.dispatch_route_all, name='dispatch_route_all'),
+    path('stop/<int:stop_pk>/remove/', views.remove_route_stop, name='remove_route_stop'),
+    path('stop/<int:stop_pk>/move/<str:direction>/', views.move_route_stop, name='move_route_stop'),
+    path('stop/<int:stop_pk>/update-status/', views.update_stop_status, name='update_stop_status'),
+
+    # Driver Manifest & Portal URLs
+    path('driver/portal/', views.driver_portal, name='driver_portal'),
+
 
     # Warehouse URLs
     path('add-warehouse/', views.add_warehouse, name='add_warehouse'),

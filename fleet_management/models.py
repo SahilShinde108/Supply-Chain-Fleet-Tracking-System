@@ -58,13 +58,54 @@ class Route(models.Model):
 
     @property
     def total_weight(self):
+        stop_weight = sum(s.shipment.weight for s in self.stops.all())
+        if stop_weight > 0:
+            return stop_weight
         return sum(shp.weight for shp in self.shipments.all())
 
     @property
     def is_overcapacity(self):
-        if self.vehicle:
+        if self.vehicle and self.vehicle.capacity > 0:
             return self.total_weight > self.vehicle.capacity
         return False
+
+    @property
+    def ordered_stops(self):
+        return self.stops.select_related('shipment', 'shipment__origin_warehouse').order_by('stop_number')
+
+    @property
+    def completed_stops_count(self):
+        return self.stops.filter(status='COMPLETED').count()
+
+    @property
+    def progress_percentage(self):
+        total = self.stops.count()
+        if total == 0:
+            return 0
+        return int((self.completed_stops_count / total) * 100)
+
+    def add_stop(self, shipment, stop_number=None, instructions=""):
+        if stop_number is None:
+            max_num = self.stops.aggregate(models.Max('stop_number'))['stop_number__max']
+            stop_number = (max_num or 0) + 1
+
+        stop, created = RouteStop.objects.update_or_create(
+            route=self,
+            shipment=shipment,
+            defaults={
+                'stop_number': stop_number,
+                'instructions': instructions
+            }
+        )
+        shipment.route = self
+        shipment.save()
+        return stop
+
+    def reorder_stops(self):
+        for idx, stop in enumerate(self.stops.order_by('stop_number', 'id'), start=1):
+            if stop.stop_number != idx:
+                RouteStop.objects.filter(id=stop.id).update(stop_number=idx)
+
 
 class Shipment(models.Model):
     STATUS_PROCESSING = 'PROCESSING'
@@ -161,4 +202,41 @@ class ShipmentStatusLog(models.Model):
 
     def __str__(self):
         return f"{self.shipment.tracking_number}: {self.from_status} -> {self.to_status} at {self.timestamp.strftime('%Y-%m-%d %H:%M')}"
+
+class RouteStop(models.Model):
+    STOP_STATUS_CHOICES = (
+        ('PENDING', 'Pending'),
+        ('ARRIVED', 'Arrived'),
+        ('COMPLETED', 'Completed'),
+        ('SKIPPED', 'Skipped'),
+    )
+    route = models.ForeignKey(Route, on_delete=models.CASCADE, related_name='stops')
+    shipment = models.ForeignKey(Shipment, on_delete=models.CASCADE, related_name='route_stops')
+    stop_number = models.PositiveIntegerField(help_text="Sequence order of the stop (1, 2, 3...)")
+    status = models.CharField(max_length=20, choices=STOP_STATUS_CHOICES, default='PENDING')
+    estimated_arrival = models.DateTimeField(blank=True, null=True)
+    actual_arrival = models.DateTimeField(blank=True, null=True)
+    completed_at = models.DateTimeField(blank=True, null=True)
+    instructions = models.CharField(max_length=255, blank=True, null=True, help_text="Special delivery instructions for driver")
+
+    class Meta:
+        ordering = ['stop_number', 'id']
+        unique_together = ('route', 'shipment')
+
+    def __str__(self):
+        return f"Stop #{self.stop_number} on {self.route.route_code}: {self.shipment.tracking_number}"
+
+
+    def mark_arrived(self):
+        self.status = 'ARRIVED'
+        self.actual_arrival = timezone.now()
+        self.save()
+
+    def mark_completed(self, user=None):
+        self.status = 'COMPLETED'
+        self.completed_at = timezone.now()
+        self.save()
+        if self.shipment.can_transition_to(Shipment.STATUS_DELIVERED):
+            self.shipment.transition_to(Shipment.STATUS_DELIVERED, user=user, notes=f"Delivered at Route Stop #{self.stop_number}")
+
 

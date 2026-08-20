@@ -5,11 +5,12 @@ from django.contrib.auth import logout, login
 from django.contrib import messages
 from django.db.models import Q
 from django.core.exceptions import ValidationError
-from .models import Warehouse, Vehicle, Driver, Route, Shipment, ShipmentStatusLog
+from .models import Warehouse, Vehicle, Driver, Route, Shipment, ShipmentStatusLog, RouteStop
 from .forms import (
     WarehouseForm, VehicleForm, DriverForm, SignUpForm,
-    RouteForm, ShipmentForm, ShipmentStatusUpdateForm
+    RouteForm, ShipmentForm, ShipmentStatusUpdateForm, RouteStopForm
 )
+
 
 # Check user role (Dispatcher, Manager, or Superuser)
 def is_dispatcher_or_manager(user):
@@ -212,23 +213,211 @@ def add_route(request):
 
 @login_required
 def route_detail(request, pk):
-    route = get_object_or_404(Route.objects.select_related('origin_warehouse', 'destination_warehouse', 'driver', 'vehicle').prefetch_related('shipments'), pk=pk)
-    shipments = route.shipments.all().order_by('-created_at')
+    route = get_object_or_404(
+        Route.objects.select_related('origin_warehouse', 'destination_warehouse', 'driver', 'vehicle')
+        .prefetch_related('stops', 'stops__shipment', 'shipments'),
+        pk=pk
+    )
+    stops = route.ordered_stops
     can_manage = is_dispatcher_or_manager(request.user)
+
+    # Unassigned shipments available to add to this route
+    available_shipments = Shipment.objects.filter(
+        Q(route__isnull=True) | Q(route=route)
+    ).exclude(
+        route_stops__route=route
+    ).exclude(
+        status__in=['DELIVERED', 'CANCELLED']
+    ).order_by('-created_at')
 
     # Capacity percentage
     capacity_pct = 0
     if route.vehicle and route.vehicle.capacity > 0:
         capacity_pct = min(100, int((route.total_weight / route.vehicle.capacity) * 100))
 
+    stop_form = RouteStopForm()
+    stop_form.fields['shipment'].queryset = available_shipments
+
     context = {
         'route': route,
-        'shipments': shipments,
+        'stops': stops,
+        'available_shipments': available_shipments,
+        'stop_form': stop_form,
         'capacity_pct': capacity_pct,
         'can_manage': can_manage,
         'active_tab': 'routes',
     }
     return render(request, 'fleet_management/route_detail.html', context)
+
+@login_required
+@user_passes_test(is_dispatcher_or_manager)
+def add_route_stop(request, route_pk):
+    route = get_object_or_404(Route, pk=route_pk)
+    if request.method == 'POST':
+        shipment_id = request.POST.get('shipment')
+        stop_number = request.POST.get('stop_number')
+        instructions = request.POST.get('instructions', '').strip()
+
+        if shipment_id:
+            shipment = get_object_or_404(Shipment, pk=shipment_id)
+            parsed_stop_num = int(stop_number) if stop_number and stop_number.isdigit() else None
+            route.add_stop(shipment, stop_number=parsed_stop_num, instructions=instructions)
+            messages.success(request, f"Shipment #{shipment.tracking_number} added as stop on route {route.route_code}.")
+        else:
+            messages.error(request, "Please select a valid shipment.")
+
+    return redirect('route_detail', pk=route.pk)
+
+@login_required
+@user_passes_test(is_dispatcher_or_manager)
+def remove_route_stop(request, stop_pk):
+    stop = get_object_or_404(RouteStop.objects.select_related('route', 'shipment'), pk=stop_pk)
+    route = stop.route
+    shipment = stop.shipment
+
+    shipment.route = None
+    shipment.save()
+    stop.delete()
+    route.reorder_stops()
+
+    messages.info(request, f"Stop #{stop.stop_number} ({shipment.tracking_number}) removed from route {route.route_code}.")
+    return redirect('route_detail', pk=route.pk)
+
+@login_required
+@user_passes_test(is_dispatcher_or_manager)
+def move_route_stop(request, stop_pk, direction):
+    stop = get_object_or_404(RouteStop.objects.select_related('route'), pk=stop_pk)
+    route = stop.route
+    current_num = stop.stop_number
+
+    if direction == 'up' and current_num > 1:
+        target_stop = route.stops.filter(stop_number=current_num - 1).first()
+        if target_stop:
+            target_stop.stop_number = current_num
+            stop.stop_number = current_num - 1
+            target_stop.save()
+            stop.save()
+            messages.success(request, f"Moved Stop #{current_num} up to #{current_num - 1}.")
+    elif direction == 'down':
+        target_stop = route.stops.filter(stop_number=current_num + 1).first()
+        if target_stop:
+            target_stop.stop_number = current_num
+            stop.stop_number = current_num + 1
+            target_stop.save()
+            stop.save()
+            messages.success(request, f"Moved Stop #{current_num} down to #{current_num + 1}.")
+
+    return redirect('route_detail', pk=route.pk)
+
+@login_required
+def dispatch_route_all(request, route_pk):
+    route = get_object_or_404(Route.objects.prefetch_related('stops__shipment', 'shipments'), pk=route_pk)
+    can_manage = is_dispatcher_or_manager(request.user)
+
+    if not can_manage and not (hasattr(request.user, 'driver') and route.driver == request.user.driver):
+        messages.error(request, "You do not have permission to dispatch this route.")
+        return redirect('route_detail', pk=route.pk)
+
+    route.status = 'IN_PROGRESS'
+    route.save()
+
+    dispatched_count = 0
+    # Update all shipments in route stops
+    for stop in route.stops.select_related('shipment').all():
+        shp = stop.shipment
+        if shp.status == 'PROCESSING':
+            try:
+                shp.transition_to('DISPATCHED', user=request.user, notes=f"Batch dispatched on Route {route.route_code}")
+                shp.transition_to('IN_TRANSIT', user=request.user, notes=f"Departed on Route {route.route_code}")
+                dispatched_count += 1
+            except ValidationError:
+                pass
+        elif shp.status == 'DISPATCHED':
+            try:
+                shp.transition_to('IN_TRANSIT', user=request.user, notes=f"Departed on Route {route.route_code}")
+                dispatched_count += 1
+            except ValidationError:
+                pass
+
+    messages.success(request, f"Route '{route.route_code}' is now In Progress. {dispatched_count} packages marked In Transit.")
+    return redirect('route_detail', pk=route.pk)
+
+
+# ==========================================
+# --- V3 Driver Portal & Daily Stop-List ---
+# ==========================================
+
+@login_required
+def driver_portal(request):
+    driver = None
+    if hasattr(request.user, 'driver'):
+        driver = request.user.driver
+    elif is_dispatcher_or_manager(request.user):
+        driver_id = request.GET.get('driver_id')
+        if driver_id:
+            driver = Driver.objects.filter(pk=driver_id).first()
+        if not driver:
+            driver = Driver.objects.first()
+
+    all_drivers = Driver.objects.all() if is_dispatcher_or_manager(request.user) else []
+    assigned_routes = Route.objects.filter(driver=driver).select_related('origin_warehouse', 'destination_warehouse', 'vehicle').order_by('-created_at') if driver else []
+
+    # Selected route (defaults to active in-progress or first planned)
+    selected_route_id = request.GET.get('route_id')
+    active_route = None
+    if selected_route_id:
+        active_route = assigned_routes.filter(pk=selected_route_id).first()
+    if not active_route and assigned_routes:
+        active_route = assigned_routes.filter(status='IN_PROGRESS').first() or assigned_routes.first()
+
+    ordered_stops = []
+    if active_route:
+        ordered_stops = active_route.stops.select_related('shipment', 'shipment__origin_warehouse').order_by('stop_number')
+
+    context = {
+        'driver': driver,
+        'all_drivers': all_drivers,
+        'assigned_routes': assigned_routes,
+        'active_route': active_route,
+        'ordered_stops': ordered_stops,
+        'active_tab': 'driver_portal',
+    }
+    return render(request, 'fleet_management/driver_portal.html', context)
+
+@login_required
+def update_stop_status(request, stop_pk):
+    stop = get_object_or_404(RouteStop.objects.select_related('route', 'route__driver', 'shipment'), pk=stop_pk)
+    action = request.POST.get('action')
+    notes = request.POST.get('notes', '').strip()
+
+    # Permission check: driver or manager
+    can_manage = is_dispatcher_or_manager(request.user)
+    is_assigned = hasattr(request.user, 'driver') and stop.route.driver == request.user.driver
+
+    if not (can_manage or is_assigned):
+        messages.error(request, "Permission denied.")
+        return redirect('driver_portal')
+
+    if action == 'arrive':
+        stop.mark_arrived()
+        messages.success(request, f"Arrived at Stop #{stop.stop_number} ({stop.shipment.recipient_name}).")
+    elif action == 'complete':
+        stop.mark_completed(user=request.user)
+        messages.success(request, f"Stop #{stop.stop_number} marked COMPLETED! Package #{stop.shipment.tracking_number} delivered.")
+    elif action == 'skip':
+        stop.status = 'SKIPPED'
+        stop.save()
+        messages.warning(request, f"Stop #{stop.stop_number} skipped.")
+
+    # If all stops in route are completed, optionally mark route as COMPLETED
+    if stop.route.stops.count() > 0 and stop.route.completed_stops_count == stop.route.stops.count():
+        stop.route.status = 'COMPLETED'
+        stop.route.save()
+        messages.success(request, f"All stops completed! Route {stop.route.route_code} marked COMPLETED.")
+
+    redirect_url = request.POST.get('next') or request.META.get('HTTP_REFERER') or '/driver/portal/'
+    return redirect(redirect_url)
+
 
 @login_required
 @user_passes_test(is_dispatcher_or_manager)

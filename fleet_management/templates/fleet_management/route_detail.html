@@ -49,16 +49,30 @@
             </div>
 
             <!-- Action Controls -->
-            {% if can_manage %}
-            <div class="flex items-center space-x-2">
-                <a href="{% url 'edit_route' route.pk %}" class="inline-flex items-center px-3.5 py-2 bg-slate-100 hover:bg-indigo-50 text-slate-700 hover:text-indigo-600 text-xs font-semibold rounded-lg transition border border-slate-200">
-                    <i class="fa-solid fa-pen-to-square mr-1.5"></i> Edit Route
+            <div class="flex flex-wrap items-center gap-2">
+                <a href="{% url 'driver_portal' %}?route_id={{ route.pk }}{% if route.driver %}&driver_id={{ route.driver.pk }}{% endif %}"
+                    class="inline-flex items-center px-3.5 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold rounded-lg transition border border-indigo-200 shadow-sm">
+                    <i class="fa-solid fa-clipboard-list mr-1.5"></i> Driver Manifest View
                 </a>
-                <a href="{% url 'delete_route' route.pk %}" class="inline-flex items-center px-3.5 py-2 bg-slate-100 hover:bg-rose-50 text-slate-700 hover:text-rose-600 text-xs font-semibold rounded-lg transition border border-slate-200">
-                    <i class="fa-solid fa-trash mr-1.5"></i> Delete
+                
+                {% if route.status == 'PLANNED' and stops.count > 0 %}
+                <form method="post" action="{% url 'dispatch_route_all' route.pk %}">
+                    {% csrf_token %}
+                    <button type="submit" class="inline-flex items-center px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition shadow-sm shadow-emerald-600/20">
+                        <i class="fa-solid fa-truck-fast mr-1.5"></i> Dispatch & Start Run
+                    </button>
+                </form>
+                {% endif %}
+
+                {% if can_manage %}
+                <a href="{% url 'edit_route' route.pk %}" class="inline-flex items-center px-3 py-2 bg-slate-100 hover:bg-indigo-50 text-slate-700 hover:text-indigo-600 text-xs font-semibold rounded-lg transition border border-slate-200">
+                    <i class="fa-solid fa-pen-to-square mr-1"></i> Edit
                 </a>
+                <a href="{% url 'delete_route' route.pk %}" class="inline-flex items-center px-3 py-2 bg-slate-100 hover:bg-rose-50 text-slate-700 hover:text-rose-600 text-xs font-semibold rounded-lg transition border border-slate-200">
+                    <i class="fa-solid fa-trash mr-1"></i> Delete
+                </a>
+                {% endif %}
             </div>
-            {% endif %}
         </div>
 
         <!-- Metric Cards -->
@@ -76,7 +90,7 @@
                     </div>
                     {% else %}
                     <div class="flex items-center text-slate-400 italic">
-                        <i class="fa-solid fa-route text-slate-300 mr-2 w-4"></i> Multi-Stop Customer Drops
+                        <i class="fa-solid fa-route text-slate-300 mr-2 w-4"></i> Multi-Stop Customer Loop
                     </div>
                     {% endif %}
                 </div>
@@ -110,91 +124,148 @@
                     <div class="h-full rounded-full transition-all duration-300 {% if route.is_overcapacity %}bg-rose-500{% elif capacity_pct > 80 %}bg-amber-500{% else %}bg-indigo-600{% endif %}" style="width: {{ capacity_pct }}%"></div>
                 </div>
                 <div class="flex justify-between items-center text-[10px] text-slate-400 mt-1">
-                    <span>{{ shipments.count }} packages</span>
-                    <span>{{ capacity_pct }}% capacity</span>
+                    <span>{{ stops.count }} stops ({{ route.completed_stops_count }} done)</span>
+                    <span>{{ capacity_pct }}% weight</span>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Assigned Shipments on this Route -->
+    <!-- Multi-Stop Sequencer & Manifest -->
     <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         <div class="px-6 py-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-50/50">
             <div>
-                <h2 class="text-base font-bold text-slate-800">Assigned Manifest Shipments</h2>
-                <p class="text-xs text-slate-500 mt-0.5">List of all cargo orders routed through this loop</p>
+                <h2 class="text-base font-bold text-slate-800 flex items-center">
+                    <i class="fa-solid fa-list-ol text-indigo-600 mr-2"></i>
+                    Ordered Multi-Stop Sequence
+                </h2>
+                <p class="text-xs text-slate-500 mt-0.5">Stops are ordered chronologically for the driver's daily run</p>
             </div>
+            
             {% if can_manage %}
-            <a href="{% url 'add_shipment' %}" class="inline-flex items-center justify-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg shadow-sm shadow-indigo-600/20 transition">
-                <i class="fa-solid fa-plus mr-1.5 text-[10px]"></i> Add Shipment
-            </a>
+            <div class="flex items-center space-x-2">
+                <button type="button" onclick="openAddStopModal()"
+                    class="inline-flex items-center justify-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg shadow-sm shadow-indigo-600/20 transition">
+                    <i class="fa-solid fa-plus mr-1.5 text-[10px]"></i> Add Stop to Route
+                </button>
+            </div>
             {% endif %}
         </div>
 
         <div class="overflow-x-auto">
             <table class="w-full text-left border-collapse">
                 <thead>
-                    <tr class="bg-slate-100/70 border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                        <th class="px-6 py-3.5">Tracking #</th>
-                        <th class="px-6 py-3.5">Package Title</th>
-                        <th class="px-6 py-3.5">Recipient & Address</th>
-                        <th class="px-6 py-3.5">Weight</th>
-                        <th class="px-6 py-3.5">Status</th>
+                    <tr class="bg-slate-100/70 border-b border-slate-200 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                        <th class="px-6 py-3.5 text-center w-24">Stop #</th>
+                        <th class="px-6 py-3.5">Package Details</th>
+                        <th class="px-6 py-3.5">Recipient & Destination</th>
+                        <th class="px-6 py-3.5">Special Instructions</th>
+                        <th class="px-6 py-3.5">Stop Status</th>
                         <th class="px-6 py-3.5 text-right">Actions</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100 text-sm text-slate-700">
-                    {% for shipment in shipments %}
-                    <tr class="hover:bg-slate-50/80 transition">
-                        <td class="px-6 py-4 font-mono font-bold text-slate-900">
-                            <a href="{% url 'shipment_detail' shipment.pk %}" class="hover:text-indigo-600 transition underline underline-offset-2">
-                                {{ shipment.tracking_number }}
+                    {% for stop in stops %}
+                    <tr class="hover:bg-slate-50/80 transition {% if stop.status == 'COMPLETED' %}bg-emerald-50/20{% endif %}">
+                        
+                        <!-- Stop Number & Reorder Controls -->
+                        <td class="px-6 py-4 text-center">
+                            <div class="flex items-center justify-center space-x-1.5">
+                                <span class="w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs font-mono shadow-sm
+                                    {% if stop.status == 'COMPLETED' %}bg-emerald-600 text-white
+                                    {% elif stop.status == 'ARRIVED' %}bg-indigo-600 text-white animate-pulse
+                                    {% else %}bg-slate-900 text-amber-400{% endif %}">
+                                    #{{ stop.stop_number }}
+                                </span>
+                                
+                                {% if can_manage %}
+                                <div class="flex flex-col space-y-0.5">
+                                    <form method="post" action="{% url 'move_route_stop' stop.pk 'up' %}">
+                                        {% csrf_token %}
+                                        <button type="submit" title="Move Up" class="text-slate-400 hover:text-indigo-600 transition text-[10px] leading-none p-0.5">
+                                            <i class="fa-solid fa-chevron-up"></i>
+                                        </button>
+                                    </form>
+                                    <form method="post" action="{% url 'move_route_stop' stop.pk 'down' %}">
+                                        {% csrf_token %}
+                                        <button type="submit" title="Move Down" class="text-slate-400 hover:text-indigo-600 transition text-[10px] leading-none p-0.5">
+                                            <i class="fa-solid fa-chevron-down"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </td>
+
+                        <!-- Tracking & Title -->
+                        <td class="px-6 py-4">
+                            <a href="{% url 'shipment_detail' stop.shipment.pk %}" class="font-mono text-xs font-bold text-indigo-600 hover:underline block">
+                                {{ stop.shipment.tracking_number }}
                             </a>
+                            <span class="font-medium text-slate-800 text-xs">{{ stop.shipment.title }}</span>
+                            <span class="text-xs text-slate-400 block font-normal">{{ stop.shipment.weight }} kg</span>
                         </td>
-                        <td class="px-6 py-4 font-medium text-slate-800">
-                            {{ shipment.title }}
-                        </td>
+
+                        <!-- Recipient & Address -->
                         <td class="px-6 py-4">
-                            <p class="font-semibold text-slate-900 text-xs">{{ shipment.recipient_name }}</p>
-                            <p class="text-xs text-slate-500 truncate max-w-xs">{{ shipment.destination_address }}</p>
+                            <p class="font-semibold text-slate-900 text-xs">{{ stop.shipment.recipient_name }}</p>
+                            <p class="text-xs text-slate-500 truncate max-w-xs">{{ stop.shipment.destination_address }}</p>
+                            <p class="text-[11px] text-slate-400 mt-0.5">{{ stop.shipment.recipient_phone }}</p>
                         </td>
-                        <td class="px-6 py-4 font-medium text-slate-700">
-                            {{ shipment.weight }} <span class="text-xs text-slate-400">kg</span>
-                        </td>
+
+                        <!-- Instructions -->
                         <td class="px-6 py-4">
-                            {% if shipment.status == 'PROCESSING' %}
-                                <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-amber-50 text-amber-700 border border-amber-200">
-                                    Processing
+                            {% if stop.instructions %}
+                            <span class="inline-flex items-center text-xs text-slate-700 bg-amber-50 px-2.5 py-1 rounded border border-amber-200">
+                                <i class="fa-solid fa-note-sticky text-amber-500 mr-1.5 text-[10px]"></i> {{ stop.instructions }}
+                            </span>
+                            {% else %}
+                            <span class="text-xs text-slate-400 italic">None</span>
+                            {% endif %}
+                        </td>
+
+                        <!-- Stop Status -->
+                        <td class="px-6 py-4">
+                            {% if stop.status == 'PENDING' %}
+                                <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+                                    Pending
                                 </span>
-                            {% elif shipment.status == 'DISPATCHED' %}
-                                <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-blue-50 text-blue-700 border border-blue-200">
-                                    Dispatched
+                            {% elif stop.status == 'ARRIVED' %}
+                                <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
+                                    Arrived
                                 </span>
-                            {% elif shipment.status == 'IN_TRANSIT' %}
-                                <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-purple-50 text-purple-700 border border-purple-200">
-                                    In Transit
-                                </span>
-                            {% elif shipment.status == 'DELIVERED' %}
+                            {% elif stop.status == 'COMPLETED' %}
                                 <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
                                     Delivered
                                 </span>
                             {% else %}
                                 <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-rose-50 text-rose-700 border border-rose-200">
-                                    Cancelled
+                                    Skipped
                                 </span>
                             {% endif %}
                         </td>
-                        <td class="px-6 py-4 text-right space-x-2">
-                            <a href="{% url 'shipment_detail' shipment.pk %}" class="inline-flex items-center px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-semibold rounded-lg transition">
+
+                        <!-- Actions -->
+                        <td class="px-6 py-4 text-right space-x-1.5">
+                            <a href="{% url 'shipment_detail' stop.shipment.pk %}" class="inline-flex items-center px-2.5 py-1.5 bg-slate-100 hover:bg-indigo-50 text-slate-600 hover:text-indigo-600 text-xs font-semibold rounded-lg transition">
                                 <i class="fa-solid fa-eye mr-1"></i> View
                             </a>
+                            
+                            {% if can_manage %}
+                            <form method="post" action="{% url 'remove_route_stop' stop.pk %}" class="inline-block" onsubmit="return confirm('Remove Stop #{{ stop.stop_number }} from this route?');">
+                                {% csrf_token %}
+                                <button type="submit" class="inline-flex items-center px-2.5 py-1.5 bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-600 text-xs font-semibold rounded-lg transition" title="Remove stop">
+                                    <i class="fa-solid fa-xmark"></i>
+                                </button>
+                            </form>
+                            {% endif %}
                         </td>
                     </tr>
                     {% empty %}
                     <tr>
                         <td colspan="6" class="px-6 py-12 text-center text-slate-400">
-                            <i class="fa-solid fa-boxes-packing text-3xl mb-2 text-slate-300 block"></i>
-                            No shipments assigned to this route yet.
+                            <i class="fa-solid fa-list-ol text-3xl mb-2 text-slate-300 block"></i>
+                            No stops configured on this route yet. Click "Add Stop to Route" below to assign shipments.
                         </td>
                     </tr>
                     {% endfor %}
@@ -204,4 +275,87 @@
     </div>
 
 </div>
+
+<!-- Modal: Add Stop to Route -->
+{% if can_manage %}
+<div id="addStopModal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-slate-200">
+        <div class="flex items-center justify-between mb-5">
+            <h3 class="text-base font-bold text-slate-800 flex items-center">
+                <i class="fa-solid fa-plus text-indigo-600 mr-2"></i> Add Shipment Stop to Route {{ route.route_code }}
+            </h3>
+            <button type="button" onclick="closeAddStopModal()" class="text-slate-400 hover:text-slate-600">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+        </div>
+
+        {% if available_shipments.count == 0 %}
+        <div class="p-6 text-center bg-slate-50 rounded-xl border border-dashed border-slate-200">
+            <i class="fa-solid fa-box-open text-3xl text-slate-300 mb-2"></i>
+            <p class="text-xs text-slate-600 font-semibold">No available shipments found.</p>
+            <p class="text-[11px] text-slate-400 mt-1">All active shipments are already assigned or delivered.</p>
+            <a href="{% url 'add_shipment' %}" class="inline-block mt-3 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg transition">
+                Create New Shipment
+            </a>
+        </div>
+        {% else %}
+        <form method="post" action="{% url 'add_route_stop' route.pk %}" class="space-y-4">
+            {% csrf_token %}
+
+            <div>
+                <label for="id_shipment" class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Select Shipment <span class="text-rose-500">*</span>
+                </label>
+                <select name="shipment" id="id_shipment" class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white" required>
+                    <option value="">-- Choose a shipment package --</option>
+                    {% for shp in available_shipments %}
+                    <option value="{{ shp.pk }}">
+                        {{ shp.tracking_number }} — {{ shp.title }} ({{ shp.weight }}kg) &rarr; {{ shp.recipient_name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                    <label for="id_stop_number" class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                        Stop Sequence #
+                    </label>
+                    <input type="number" name="stop_number" id="id_stop_number"
+                        class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        placeholder="Leave blank for next: {{ stops.count|add:1 }}">
+                </div>
+
+                <div>
+                    <label for="id_instructions" class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                        Delivery Instructions
+                    </label>
+                    <input type="text" name="instructions" id="id_instructions"
+                        class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        placeholder="e.g. Ring bell #3B, gate code 9921">
+                </div>
+            </div>
+
+            <div class="flex items-center justify-end space-x-3 pt-3">
+                <button type="button" onclick="closeAddStopModal()" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition">
+                    Cancel
+                </button>
+                <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg shadow-md shadow-indigo-600/30 transition">
+                    Add Stop
+                </button>
+            </div>
+        </form>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+    function openAddStopModal() {
+        document.getElementById('addStopModal').classList.remove('hidden');
+    }
+    function closeAddStopModal() {
+        document.getElementById('addStopModal').classList.add('hidden');
+    }
+</script>
+{% endif %}
 {% endblock %}
