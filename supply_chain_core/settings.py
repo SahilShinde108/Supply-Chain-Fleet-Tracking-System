@@ -32,7 +32,7 @@ ALLOWED_HOSTS = ['*']
 
 # Add these lines for Railway deployment:
 CSRF_TRUSTED_ORIGINS = [
-    'https://web-production-572695.up.railway.app',
+    'https://web-production-19534.up.railway.app',
     'https://*.up.railway.app',
 ]
 
