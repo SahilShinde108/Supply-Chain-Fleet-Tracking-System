@@ -27,6 +27,16 @@ DEBUG = True
 
 ALLOWED_HOSTS = ['*']
 
+ALLOWED_HOSTS = ['*']
+
+# Add these lines for Railway deployment:
+CSRF_TRUSTED_ORIGINS = [
+    'https://web-production-572695.up.railway.app',
+    'https://*.up.railway.app',
+]
+
+# Tell Django it is behind a reverse proxy (Railway SSL):
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 
 # Application definition
